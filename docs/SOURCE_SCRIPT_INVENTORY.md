@@ -114,3 +114,8 @@ First migration slice:
 
 - `forest_labeler_core/canopy_presets.py` extracts dense, sparse, mixed, and crown-tightness settings into a QGIS-independent module.
 - `unit_tests/test_canopy_presets.py` covers mode normalization, tightness clamping, dense-end behavior, and loose-end behavior.
+
+Second migration slice:
+
+- `forest_labeler_core/numeric.py` extracts median, Gaussian kernel, circular Gaussian smoothing, and circular moving average helpers.
+- `unit_tests/test_numeric.py` covers edge wrapping, normalization, invalid parameters, empty inputs, and zero-pass behavior.
