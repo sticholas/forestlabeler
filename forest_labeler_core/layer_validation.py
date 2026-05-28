@@ -80,7 +80,7 @@ def _validate_target_layer(layer, errors, warnings):
             + "."
         )
 
-    if layer.isReadOnly():
+    if _layer_is_read_only(layer):
         errors.append(f"'{layer.name()}' is read-only and cannot receive canopy features.")
 
 
@@ -103,3 +103,12 @@ def _validate_species_layer(layer, errors):
         errors.append(
             f"'{layer.name()}' is missing species code field '{SPECIES_CODE_FIELD}'."
         )
+
+
+def _layer_is_read_only(layer):
+    """Return read-only state across QGIS API versions."""
+    if hasattr(layer, "isReadOnly"):
+        return layer.isReadOnly()
+    if hasattr(layer, "readOnly"):
+        return layer.readOnly()
+    return False
