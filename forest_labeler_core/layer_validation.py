@@ -75,7 +75,8 @@ def _validate_target_layer(layer, errors, warnings):
     ]
     if missing_recommended:
         warnings.append(
-            f"'{layer.name()}' is missing optional metadata field(s): "
+            f"'{layer.name()}' can be used, but optional metadata will not be stored "
+            "unless these field(s) are added: "
             + ", ".join(missing_recommended)
             + "."
         )
