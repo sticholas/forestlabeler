@@ -26,3 +26,4 @@ This project is in foundation phase. The installed plugin opens in QGIS, but the
 - [Development Workflow](docs/DEVELOPMENT.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Quality Gates](docs/QUALITY_GATES.md)
+- [Source Script Inventory](docs/SOURCE_SCRIPT_INVENTORY.md)
