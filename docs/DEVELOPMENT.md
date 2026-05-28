@@ -78,3 +78,13 @@ python3 -m unittest discover -s unit_tests
 ```
 
 The older Plugin Builder `test/` folder imports QGIS at package import time and should be treated as QGIS-environment test scaffolding until it is modernized.
+
+## Local Check Command
+
+Run the standard local checks before committing:
+
+```bash
+bash scripts/checks.sh
+```
+
+This currently runs Python syntax checks, QGIS-independent unit tests, and Qt UI XML parsing.

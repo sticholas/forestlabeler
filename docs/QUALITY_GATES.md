@@ -61,6 +61,7 @@ Manual QGIS checks should record:
 - Migrated helpers are no longer dependent on QGIS globals such as `iface` or `canvas`.
 - Configuration is explicit and reviewable.
 - Pure helper tests can run outside QGIS.
+- `bash scripts/checks.sh` passes before pushing.
 
 ## Release Checklist
 
