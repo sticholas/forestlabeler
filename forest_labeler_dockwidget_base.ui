@@ -6,21 +6,89 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>232</width>
-    <height>141</height>
+    <width>360</width>
+    <height>420</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Forest Labeler</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0">
-     <widget class="QLabel" name="label">
+   <layout class="QVBoxLayout" name="mainLayout">
+    <item>
+     <widget class="QGroupBox" name="layersGroupBox">
       <property name="text">
-       <string>Replace this QLabel
-with the desired
-plugin content.</string>
+       <string>Layers</string>
+      </property>
+      <layout class="QFormLayout" name="layersFormLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="chmLayerLabel">
+         <property name="text">
+          <string>CHM raster</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QComboBox" name="chmLayerComboBox"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="targetLayerLabel">
+         <property name="text">
+          <string>Target polygons</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QComboBox" name="targetLayerComboBox"/>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="speciesLayerLabel">
+         <property name="text">
+          <string>Species points</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QComboBox" name="speciesLayerComboBox"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="buttonLayout">
+      <item>
+       <widget class="QPushButton" name="refreshLayersButton">
+        <property name="text">
+         <string>Refresh</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="validateProjectButton">
+        <property name="text">
+         <string>Validate</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QLabel" name="statusSummaryLabel">
+      <property name="text">
+       <string>Project not validated.</string>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QTextEdit" name="statusTextEdit">
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+      <property name="placeholderText">
+       <string>Validation messages will appear here.</string>
       </property>
      </widget>
     </item>
