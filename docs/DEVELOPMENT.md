@@ -68,3 +68,13 @@ bash scripts/deploy-plugin.sh
 ```
 
 Restart QGIS or use Plugin Reloader after deployment.
+
+## Unit Tests
+
+QGIS-independent tests live in `unit_tests/` so they can run in ordinary Python:
+
+```bash
+python3 -m unittest discover -s unit_tests
+```
+
+The older Plugin Builder `test/` folder imports QGIS at package import time and should be treated as QGIS-environment test scaffolding until it is modernized.

@@ -109,3 +109,8 @@ Production migration target:
 ## Current Best Candidate For Phase 2
 
 Start with `CanopyCrownLabeler.py`, because it contains the most complete crown workflow and the crown tightness range that should become user-facing plugin configuration.
+
+First migration slice:
+
+- `forest_labeler_core/canopy_presets.py` extracts dense, sparse, mixed, and crown-tightness settings into a QGIS-independent module.
+- `unit_tests/test_canopy_presets.py` covers mode normalization, tightness clamping, dense-end behavior, and loose-end behavior.
