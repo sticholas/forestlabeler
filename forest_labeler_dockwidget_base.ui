@@ -17,7 +17,7 @@
    <layout class="QVBoxLayout" name="mainLayout">
     <item>
      <widget class="QGroupBox" name="layersGroupBox">
-      <property name="text">
+      <property name="title">
        <string>Layers</string>
       </property>
       <layout class="QFormLayout" name="layersFormLayout">
