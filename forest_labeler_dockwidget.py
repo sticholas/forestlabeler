@@ -24,8 +24,16 @@
 
 import os
 
-from qgis.PyQt import QtGui, QtWidgets, uic
+from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsVectorLayer
+from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
+
+from .forest_labeler_core.config import (
+    CHM_LAYER_NAME,
+    SPECIES_POINT_LAYER_NAME,
+    TARGET_LAYER_NAME,
+)
+from .forest_labeler_core.layer_validation import validate_plugin_layers
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'forest_labeler_dockwidget_base.ui'))
@@ -35,16 +43,112 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, iface=None, parent=None):
         """Constructor."""
         super(forestlabelerDockWidget, self).__init__(parent)
+        self.iface = iface
         # Set up the user interface from Designer.
         # After setupUI you can access any designer object by doing
         # self.<objectname>, and you can use autoconnect slots - see
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self.refreshLayersButton.clicked.connect(self.refresh_layers)
+        self.validateProjectButton.clicked.connect(self.validate_project)
+        self.refresh_layers()
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
+
+    def refresh_layers(self):
+        """Load current QGIS project layers into the dock controls."""
+        self._populate_combo(
+            self.chmLayerComboBox,
+            self._raster_layers(),
+            preferred_name=CHM_LAYER_NAME,
+            allow_none=False,
+        )
+        self._populate_combo(
+            self.targetLayerComboBox,
+            self._vector_layers(Qgis.GeometryType.Polygon),
+            preferred_name=TARGET_LAYER_NAME,
+            allow_none=False,
+        )
+        self._populate_combo(
+            self.speciesLayerComboBox,
+            self._vector_layers(Qgis.GeometryType.Point),
+            preferred_name=SPECIES_POINT_LAYER_NAME,
+            allow_none=True,
+        )
+        self.statusSummaryLabel.setText("Project not validated.")
+        self.statusTextEdit.clear()
+
+    def validate_project(self):
+        """Validate selected layers and report whether labeling can start."""
+        result = validate_plugin_layers(
+            self._current_layer(self.chmLayerComboBox),
+            self._current_layer(self.targetLayerComboBox),
+            self._current_layer(self.speciesLayerComboBox),
+        )
+
+        lines = []
+        if result.errors:
+            lines.append("Errors:")
+            lines.extend(f"- {message}" for message in result.errors)
+        if result.warnings:
+            if lines:
+                lines.append("")
+            lines.append("Warnings:")
+            lines.extend(f"- {message}" for message in result.warnings)
+
+        if result.ok:
+            self.statusSummaryLabel.setText("Validation passed. Ready for Phase 2 tool wiring.")
+            if not lines:
+                lines.append("No validation issues found.")
+            self._push_message("Forest Labeler validation passed.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Validation failed. Fix project setup before labeling.")
+            self._push_message("Forest Labeler validation failed.", Qgis.Warning)
+
+        self.statusTextEdit.setPlainText("\n".join(lines))
+
+    def _populate_combo(self, combo, layers, preferred_name, allow_none):
+        combo.blockSignals(True)
+        combo.clear()
+
+        if allow_none:
+            combo.addItem("(none)", None)
+
+        selected_index = 0
+        for layer in layers:
+            combo.addItem(layer.name(), layer.id())
+            if layer.name().lower() == preferred_name.lower():
+                selected_index = combo.count() - 1
+
+        combo.setCurrentIndex(selected_index if combo.count() else -1)
+        combo.blockSignals(False)
+
+    def _current_layer(self, combo):
+        layer_id = combo.currentData()
+        if not layer_id:
+            return None
+        return QgsProject.instance().mapLayer(layer_id)
+
+    def _raster_layers(self):
+        return [
+            layer
+            for layer in QgsProject.instance().mapLayers().values()
+            if isinstance(layer, QgsRasterLayer)
+        ]
+
+    def _vector_layers(self, geometry_type):
+        return [
+            layer
+            for layer in QgsProject.instance().mapLayers().values()
+            if isinstance(layer, QgsVectorLayer) and layer.geometryType() == geometry_type
+        ]
+
+    def _push_message(self, message, level):
+        if self.iface is not None:
+            self.iface.messageBar().pushMessage("Forest Labeler", message, level=level, duration=5)

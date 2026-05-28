@@ -57,3 +57,14 @@ For every plugin behavior change, record:
 - expected result
 - actual result
 - any screenshots if behavior is visual
+
+## Deploy To QGIS
+
+From Warp/WSL:
+
+```bash
+cd "/mnt/c/Users/Milo/Documents/Forest Labeler"
+bash scripts/deploy-plugin.sh
+```
+
+Restart QGIS or use Plugin Reloader after deployment.
