@@ -1,0 +1,30 @@
+name: Feature
+description: Plan a user-facing capability or workflow improvement.
+title: "[Feature]: "
+labels: ["feature"]
+body:
+  - type: textarea
+    id: story
+    attributes:
+      label: User Story
+      description: Describe who needs this and what they need to accomplish.
+      placeholder: As a QGIS user labeling forest canopies, I want...
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: List the observable outcomes that make this complete.
+      placeholder: |
+        - Plugin validates required layers before editing.
+        - User sees a clear warning when...
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: Explain how this should be tested or manually checked in QGIS.
+    validations:
+      required: true
