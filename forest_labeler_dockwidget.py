@@ -138,8 +138,12 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def _populate_workflows(self):
         self.workflowComboBox.blockSignals(True)
         self.workflowComboBox.clear()
+        label_canopy_index = 0
         for workflow in list_workflows(include_experimental=True):
             self.workflowComboBox.addItem(workflow.label, workflow.key)
+            if workflow.key == WORKFLOW_LABEL_CANOPY:
+                label_canopy_index = self.workflowComboBox.count() - 1
+        self.workflowComboBox.setCurrentIndex(label_canopy_index)
         self.workflowComboBox.blockSignals(False)
         self._update_workflow_details()
 
@@ -178,8 +182,9 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def _request_labeling(self):
         if self.workflowComboBox.currentData() != WORKFLOW_LABEL_CANOPY:
-            self._push_message("Select the Label Canopy workflow before activating the map tool.", Qgis.Warning)
-            return
+            label_canopy_index = self.workflowComboBox.findData(WORKFLOW_LABEL_CANOPY)
+            if label_canopy_index != -1:
+                self.workflowComboBox.setCurrentIndex(label_canopy_index)
 
         result = self.validate_project()
         if not result.ok:
