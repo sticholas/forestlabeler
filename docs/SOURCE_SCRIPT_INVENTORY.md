@@ -177,3 +177,9 @@ Twelfth migration slice:
 
 - `forest_labeler_qgis/geometry_adapter.py` converts tested point-generation helpers into QGIS polygon geometries.
 - Runtime behavior should be manually verified once the adapter is wired into preview and write workflows.
+
+Thirteenth migration slice:
+
+- `forest_labeler_core/raster_analysis.py` extracts QGIS-independent profile sampling, circular area sampling, local apex search, and inner support threshold calculation.
+- `forest_labeler_qgis/raster_adapter.py` wraps QGIS raster provider sampling behind a callable sampler.
+- `unit_tests/test_raster_analysis.py` covers profile stop behavior, circular sampling, local apex search, missing samples, and threshold selection.
