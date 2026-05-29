@@ -280,3 +280,9 @@ Thirtieth migration slice:
 - Training Polygon now includes lightweight review actions for selected features: `Accept`, `Reject`, and `Unsure`.
 - Review actions update `reviewed`, `review_status`, and optional `review_note` fields, creating the first in-tool feedback loop for later learning and quality reporting.
 - Review updates require the target layer to be in edit mode, matching the safer write behavior used by polygon stamping.
+
+Thirty-first migration slice:
+
+- Training Polygon now has a `Review Summary` action that reports total, reviewed, unreviewed, accepted, rejected, and unsure counts for the selected layer.
+- Review summary logic is covered by pure unit tests so future recommendation engines can build on stable acceptance-rate and attention-count calculations.
+- The review summary uses both `review_status` and legacy `reviewed` flags, which keeps older or partially populated layers useful.

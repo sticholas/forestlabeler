@@ -285,6 +285,13 @@
         </widget>
        </item>
        <item>
+        <widget class="QPushButton" name="summarizeTrainingPolygonReviewsButton">
+         <property name="text">
+          <string>Review Summary</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="activateTrainingShapeButton">
          <property name="text">
           <string>Start Training Polygon</string>

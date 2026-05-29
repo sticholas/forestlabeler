@@ -4,16 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
-REVIEW_STATUS_ACCEPTED = "accepted"
-REVIEW_STATUS_REJECTED = "rejected"
-REVIEW_STATUS_UNSURE = "unsure"
-
-REVIEWED_FLAG_BY_STATUS = {
-    REVIEW_STATUS_ACCEPTED: 1,
-    REVIEW_STATUS_REJECTED: -1,
-    REVIEW_STATUS_UNSURE: 0,
-}
+from ..forest_labeler_core.training_polygon_review import (
+    REVIEW_STATUS_ACCEPTED,
+    REVIEW_STATUS_REJECTED,
+    REVIEW_STATUS_UNSURE,
+    REVIEWED_FLAG_BY_STATUS,
+    summarize_training_polygon_reviews,
+)
 
 
 @dataclass(frozen=True)
@@ -92,3 +89,21 @@ def mark_selected_training_polygons(layer, status, note=None):
         errors=() if updated_count > 0 else ("No selected features were updated.",),
         warnings=tuple(warnings),
     )
+
+
+def summarize_training_polygon_layer_reviews(layer):
+    """Summarize review status for every feature in a Training Polygon layer."""
+    if layer is None:
+        raise ValueError("Select a Training Polygon target layer.")
+
+    reviewed_index = layer.fields().indexOf("reviewed")
+    status_index = layer.fields().indexOf("review_status")
+    records = []
+    for feature in layer.getFeatures():
+        records.append(
+            {
+                "reviewed": feature[reviewed_index] if reviewed_index != -1 else None,
+                "review_status": feature[status_index] if status_index != -1 else None,
+            }
+        )
+    return summarize_training_polygon_reviews(records)

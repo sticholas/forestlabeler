@@ -52,7 +52,9 @@ from .forest_labeler_qgis.training_polygon_review import (
     REVIEW_STATUS_REJECTED,
     REVIEW_STATUS_UNSURE,
     mark_selected_training_polygons,
+    summarize_training_polygon_layer_reviews,
 )
+from .forest_labeler_core.training_polygon_review import format_training_polygon_review_summary
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'forest_labeler_dockwidget_base.ui'))
@@ -85,6 +87,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.activateLabelingButton.clicked.connect(self._request_labeling)
         self.activateTrainingShapeButton.clicked.connect(self._request_training_polygon)
         self.repairTrainingPolygonSchemaButton.clicked.connect(self._repair_training_polygon_schema)
+        self.summarizeTrainingPolygonReviewsButton.clicked.connect(self._summarize_training_polygon_reviews)
         self.markTrainingPolygonAcceptedButton.clicked.connect(
             lambda: self._mark_selected_training_polygons(REVIEW_STATUS_ACCEPTED)
         )
@@ -175,6 +178,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.validateProjectButton.setProperty("buttonRole", "secondary")
         self.refreshLayersButton.setProperty("buttonRole", "secondary")
         self.repairTrainingPolygonSchemaButton.setProperty("buttonRole", "secondary")
+        self.summarizeTrainingPolygonReviewsButton.setProperty("buttonRole", "secondary")
         self.markTrainingPolygonAcceptedButton.setProperty("buttonRole", "secondary")
         self.markTrainingPolygonRejectedButton.setProperty("buttonRole", "secondary")
         self.markTrainingPolygonUnsureButton.setProperty("buttonRole", "secondary")
@@ -489,6 +493,22 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self.statusTextEdit.setPlainText("\n".join(result.errors + result.warnings))
             self.statusTextEdit.setVisible(True)
             self._push_message("Training Polygon review update failed.", Qgis.Warning)
+
+    def _summarize_training_polygon_reviews(self):
+        try:
+            summary = summarize_training_polygon_layer_reviews(self.selected_training_polygon_layer())
+        except ValueError as exc:
+            self.statusSummaryLabel.setText("Could not summarize Training Polygon reviews.")
+            self.statusTextEdit.setPlainText(str(exc))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Training Polygon review summary failed.", Qgis.Warning)
+            return
+
+        lines = format_training_polygon_review_summary(summary)
+        self.statusSummaryLabel.setText("Training Polygon review summary updated.")
+        self.statusTextEdit.setPlainText("\n".join(lines))
+        self.statusTextEdit.setVisible(True)
+        self._push_message("Training Polygon review summary updated.", Qgis.Info)
 
     def _target_layer_for_workflow(self, workflow_key):
         if workflow_key == WORKFLOW_CREATE_TRAINING_SQUARE:
