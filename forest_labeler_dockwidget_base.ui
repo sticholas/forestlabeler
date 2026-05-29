@@ -15,12 +15,30 @@
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QVBoxLayout" name="mainLayout">
+    <property name="spacing">
+     <number>8</number>
+    </property>
+    <property name="leftMargin">
+     <number>10</number>
+    </property>
+    <property name="topMargin">
+     <number>10</number>
+    </property>
+    <property name="rightMargin">
+     <number>10</number>
+    </property>
+    <property name="bottomMargin">
+     <number>10</number>
+    </property>
     <item>
      <widget class="QGroupBox" name="workflowGroupBox">
       <property name="title">
        <string>Workflow</string>
       </property>
       <layout class="QVBoxLayout" name="workflowLayout">
+       <property name="spacing">
+        <number>8</number>
+       </property>
        <item>
         <widget class="QComboBox" name="workflowComboBox"/>
        </item>
@@ -53,6 +71,12 @@
        <string>Layers</string>
       </property>
       <layout class="QFormLayout" name="layersFormLayout">
+       <property name="horizontalSpacing">
+        <number>10</number>
+       </property>
+       <property name="verticalSpacing">
+        <number>8</number>
+       </property>
        <item row="0" column="0">
         <widget class="QLabel" name="chmLayerLabel">
          <property name="text">
@@ -92,6 +116,9 @@
        <string>Label Canopy</string>
       </property>
       <layout class="QVBoxLayout" name="labelCanopyLayout">
+       <property name="spacing">
+        <number>8</number>
+       </property>
        <item>
         <layout class="QFormLayout" name="labelCanopyFormLayout">
          <item row="0" column="0">
@@ -129,7 +156,7 @@
        <item>
         <widget class="QPushButton" name="activateLabelingButton">
          <property name="text">
-          <string>Activate Label Canopy</string>
+          <string>Start Label Canopy</string>
          </property>
         </widget>
        </item>
@@ -139,15 +166,18 @@
     <item>
      <widget class="QGroupBox" name="trainingSquareGroupBox">
       <property name="title">
-       <string>Create Training Square</string>
+       <string>Training Shape</string>
       </property>
       <layout class="QVBoxLayout" name="trainingSquareLayout">
+       <property name="spacing">
+        <number>8</number>
+       </property>
        <item>
         <layout class="QFormLayout" name="trainingSquareFormLayout">
          <item row="0" column="0">
           <widget class="QLabel" name="squareTargetLayerLabel">
            <property name="text">
-            <string>Target squares</string>
+            <string>Target layer</string>
            </property>
           </widget>
          </item>
@@ -217,7 +247,7 @@
          <item row="4" column="0">
           <widget class="QLabel" name="squareCustomSideLengthsLabel">
            <property name="text">
-            <string>Custom sides</string>
+            <string>Custom side lengths</string>
            </property>
           </widget>
          </item>
@@ -233,7 +263,7 @@
        <item>
         <widget class="QPushButton" name="activateTrainingShapeButton">
          <property name="text">
-          <string>Activate Training Shape</string>
+          <string>Start Training Shape</string>
          </property>
         </widget>
        </item>
@@ -252,6 +282,9 @@
     </item>
     <item>
      <layout class="QHBoxLayout" name="buttonLayout">
+      <property name="spacing">
+       <number>8</number>
+      </property>
       <item>
        <widget class="QPushButton" name="refreshLayersButton">
         <property name="text">

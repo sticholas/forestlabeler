@@ -246,3 +246,8 @@ Twenty-fourth migration slice:
 - Training Shape now supports exact custom side lengths for valid polygons, including rectangles such as `100, 20, 100, 20` and triangles with three differing side lengths.
 - Blank custom side lengths preserve the simple equal-side workflow.
 - The dock summarizes custom side lengths and reports validation errors before activation.
+
+Twenty-fifth migration slice:
+
+- The dock now has a product-style QSS layer with cleaner cards, compact controls, primary/secondary action buttons, and clearer status panels.
+- Workflow controls were lightly renamed from activation language to start-language for a more end-user friendly feel.

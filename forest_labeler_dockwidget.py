@@ -66,6 +66,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self._apply_product_styling()
         self._populate_canopy_modes()
         self._populate_workflows()
         self.workflowComboBox.currentIndexChanged.connect(self._update_workflow_details)
@@ -146,6 +147,109 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         return result
 
+    def _apply_product_styling(self):
+        self.activateLabelingButton.setProperty("buttonRole", "primary")
+        self.activateTrainingShapeButton.setProperty("buttonRole", "primary")
+        self.validateProjectButton.setProperty("buttonRole", "secondary")
+        self.refreshLayersButton.setProperty("buttonRole", "secondary")
+        self.workflowMaturityLabel.setProperty("tone", "badge")
+        self.workflowDescriptionLabel.setProperty("tone", "muted")
+        self.trainingSquareSummaryLabel.setProperty("tone", "hint")
+        self.statusSummaryLabel.setProperty("tone", "status")
+        self.statusTextEdit.setMinimumHeight(112)
+        self.setStyleSheet(
+            """
+            QWidget#dockWidgetContents {
+                background: #f6f8f7;
+                color: #15211d;
+                font-size: 12px;
+            }
+            QGroupBox {
+                background: #ffffff;
+                border: 1px solid #d8e2dd;
+                border-radius: 8px;
+                margin-top: 14px;
+                padding: 14px 10px 10px 10px;
+                font-weight: 600;
+                color: #18362d;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                top: 0px;
+                padding: 0 6px;
+                background: #f6f8f7;
+                color: #315d4c;
+            }
+            QLabel[tone="muted"] {
+                color: #62746d;
+            }
+            QLabel[tone="hint"] {
+                background: #eef6f1;
+                border: 1px solid #d5eadc;
+                border-radius: 6px;
+                padding: 7px 8px;
+                color: #315d4c;
+            }
+            QLabel[tone="badge"] {
+                background: #e8f1ff;
+                border: 1px solid #c8dcff;
+                border-radius: 6px;
+                padding: 5px 8px;
+                color: #21466f;
+                font-weight: 600;
+            }
+            QLabel[tone="status"] {
+                background: #fffaf0;
+                border: 1px solid #ead9ad;
+                border-radius: 6px;
+                padding: 7px 8px;
+                color: #604b1a;
+                font-weight: 600;
+            }
+            QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit {
+                background: #ffffff;
+                border: 1px solid #cfd9d4;
+                border-radius: 6px;
+                padding: 5px 7px;
+                min-height: 22px;
+                selection-background-color: #2f7d5d;
+            }
+            QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus, QLineEdit:focus {
+                border: 1px solid #2f7d5d;
+            }
+            QPushButton {
+                border-radius: 7px;
+                padding: 7px 10px;
+                font-weight: 600;
+                min-height: 24px;
+            }
+            QPushButton[buttonRole="primary"] {
+                background: #245f49;
+                border: 1px solid #1e523f;
+                color: #ffffff;
+            }
+            QPushButton[buttonRole="primary"]:hover {
+                background: #2f7559;
+            }
+            QPushButton[buttonRole="secondary"] {
+                background: #edf2ef;
+                border: 1px solid #cdd9d3;
+                color: #244236;
+            }
+            QPushButton[buttonRole="secondary"]:hover {
+                background: #e2ebe6;
+            }
+            QTextEdit {
+                background: #ffffff;
+                border: 1px solid #d8e2dd;
+                border-radius: 8px;
+                padding: 8px;
+                color: #2c3834;
+            }
+            """
+        )
+
     def selected_layers(self):
         return (
             self._current_layer(self.chmLayerComboBox),
@@ -215,7 +319,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         maturity = "Experimental" if workflow.is_experimental else "Production target"
         write_behavior = "Writes data" if workflow.can_write_data else "Validation only"
-        self.workflowMaturityLabel.setText(f"{maturity} - {write_behavior}")
+        self.workflowMaturityLabel.setText(f"{maturity} | {write_behavior}")
 
         details = workflow.purpose
         if workflow.readiness_note:
