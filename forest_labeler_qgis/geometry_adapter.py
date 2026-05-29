@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from qgis.core import QgsCoordinateTransform, QgsGeometry, QgsPointXY, QgsProject
 
-from forest_labeler_core.geometry_math import circle_points, radii_to_points
+from ..forest_labeler_core.geometry_math import circle_points, radii_to_points
 
 
 def polygon_geometry_from_points(points):

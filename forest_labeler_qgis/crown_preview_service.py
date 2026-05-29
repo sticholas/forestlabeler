@@ -6,10 +6,10 @@ from dataclasses import dataclass
 
 from qgis.core import QgsCoordinateTransform, QgsProject
 
-from forest_labeler_core.canopy_presets import build_canopy_parameters
-from forest_labeler_core.crown_builder import CrownBuildResult, build_crown_preview_points
-from forest_labeler_qgis.geometry_adapter import polygon_geometry_from_points
-from forest_labeler_qgis.raster_adapter import raster_sampler
+from ..forest_labeler_core.canopy_presets import build_canopy_parameters
+from ..forest_labeler_core.crown_builder import CrownBuildResult, build_crown_preview_points
+from .geometry_adapter import polygon_geometry_from_points
+from .raster_adapter import raster_sampler
 
 
 @dataclass(frozen=True)

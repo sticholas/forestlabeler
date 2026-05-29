@@ -10,9 +10,9 @@ from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.core import QgsCoordinateTransform, QgsGeometry, QgsPointXY, QgsProject, QgsWkbTypes
 from qgis.gui import QgsMapTool, QgsRubberBand
 
-from forest_labeler_core.canopy_presets import build_canopy_parameters
-from forest_labeler_qgis.canopy_service import CanopyCreationRequest, create_canopy_feature
-from forest_labeler_qgis.crown_preview_service import (
+from ..forest_labeler_core.canopy_presets import build_canopy_parameters
+from .canopy_service import CanopyCreationRequest, create_canopy_feature
+from .crown_preview_service import (
     CrownPreviewRequest,
     build_crown_preview_geometry,
 )

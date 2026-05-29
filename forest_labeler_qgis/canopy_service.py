@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from forest_labeler_core.config import SPECIES_CODE_FIELD
-from forest_labeler_qgis.feature_writer import FeatureWriteResult, add_canopy_feature
-from forest_labeler_qgis.species_lookup import SpeciesLookupResult, lookup_species_for_polygon
+from ..forest_labeler_core.config import SPECIES_CODE_FIELD
+from .feature_writer import FeatureWriteResult, add_canopy_feature
+from .species_lookup import SpeciesLookupResult, lookup_species_for_polygon
 
 
 @dataclass(frozen=True)

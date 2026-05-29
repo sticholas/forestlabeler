@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from qgis.core import Qgis, QgsCoordinateTransform, QgsGeometry, QgsPointXY, QgsProject
 
-from forest_labeler_core.species import SpeciesDecision, decide_species_assignment
+from ..forest_labeler_core.species import SpeciesDecision, decide_species_assignment
 
 
 @dataclass(frozen=True)

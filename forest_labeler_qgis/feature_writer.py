@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from qgis.core import QgsFeature
 
-from forest_labeler_core.canopy_attributes import (
+from ..forest_labeler_core.canopy_attributes import (
     AttributePlan,
     CanopyAttributeInputs,
     build_canopy_attribute_plan,
