@@ -28,13 +28,14 @@ from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsVectorLayer
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 
+from .forest_labeler_core.canopy_presets import VALID_CANOPY_MODES
 from .forest_labeler_core.config import (
     CHM_LAYER_NAME,
     SPECIES_POINT_LAYER_NAME,
     TARGET_LAYER_NAME,
 )
 from .forest_labeler_core.layer_validation import validate_plugin_layers
-from .forest_labeler_core.workflows import list_workflows
+from .forest_labeler_core.workflows import WORKFLOW_LABEL_CANOPY, list_workflows
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'forest_labeler_dockwidget_base.ui'))
@@ -43,6 +44,7 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
+    activateLabelingRequested = pyqtSignal()
 
     def __init__(self, iface=None, parent=None):
         """Constructor."""
@@ -54,10 +56,12 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self._populate_canopy_modes()
         self._populate_workflows()
         self.workflowComboBox.currentIndexChanged.connect(self._update_workflow_details)
         self.refreshLayersButton.clicked.connect(self.refresh_layers)
         self.validateProjectButton.clicked.connect(self.validate_project)
+        self.activateLabelingButton.clicked.connect(self._request_labeling)
         self.refresh_layers()
 
     def closeEvent(self, event):
@@ -106,7 +110,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             lines.extend(f"- {message}" for message in result.warnings)
 
         if result.ok:
-            self.statusSummaryLabel.setText("Validation passed. Ready for Phase 2 tool wiring.")
+            self.statusSummaryLabel.setText("Validation passed. Label Canopy can be activated.")
             if not lines:
                 lines.append("No validation issues found.")
             self._push_message("Forest Labeler validation passed.", Qgis.Success)
@@ -116,6 +120,21 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.statusTextEdit.setPlainText("\n".join(lines))
 
+        return result
+
+    def selected_layers(self):
+        return (
+            self._current_layer(self.chmLayerComboBox),
+            self._current_layer(self.targetLayerComboBox),
+            self._current_layer(self.speciesLayerComboBox),
+        )
+
+    def canopy_settings(self):
+        return {
+            "canopy_mode": self.canopyModeComboBox.currentText(),
+            "crown_tightness": self.crownTightnessSpinBox.value(),
+        }
+
     def _populate_workflows(self):
         self.workflowComboBox.blockSignals(True)
         self.workflowComboBox.clear()
@@ -123,6 +142,14 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self.workflowComboBox.addItem(workflow.label, workflow.key)
         self.workflowComboBox.blockSignals(False)
         self._update_workflow_details()
+
+    def _populate_canopy_modes(self):
+        self.canopyModeComboBox.clear()
+        self.canopyModeComboBox.addItems(VALID_CANOPY_MODES)
+        default_index = self.canopyModeComboBox.findText("MIXED")
+        if default_index != -1:
+            self.canopyModeComboBox.setCurrentIndex(default_index)
+        self.crownTightnessSpinBox.setValue(11)
 
     def _current_workflow(self):
         workflow_key = self.workflowComboBox.currentData()
@@ -148,6 +175,17 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if workflow.experimental_warning:
             details = details + "\n" + workflow.experimental_warning
         self.workflowDescriptionLabel.setText(details)
+
+    def _request_labeling(self):
+        if self.workflowComboBox.currentData() != WORKFLOW_LABEL_CANOPY:
+            self._push_message("Select the Label Canopy workflow before activating the map tool.", Qgis.Warning)
+            return
+
+        result = self.validate_project()
+        if not result.ok:
+            return
+
+        self.activateLabelingRequested.emit()
 
     def _populate_combo(self, combo, layers, preferred_name, allow_none):
         combo.blockSignals(True)

@@ -206,3 +206,9 @@ Seventeenth migration slice:
 - `forest_labeler_qgis/crown_preview_service.py` adds the first QGIS adapter bridge from CHM sampling to preview crown geometry.
 - The adapter keeps parameter selection, raster sampling, QGIS polygon creation, and CRS transformation outside the pure crown builder so core inference remains unit-testable.
 - Runtime behavior still needs manual QGIS verification when the interactive map tool is wired.
+
+Eighteenth migration slice:
+
+- `forest_labeler_qgis/canopy_map_tool.py` adds the first interactive Label Canopy map tool.
+- The dock now exposes canopy mode, crown tightness, and an activation control that validates layers before enabling the map tool.
+- The map tool previews generated crown geometry while the user clicks or press-holds, then writes accepted geometry through `forest_labeler_qgis/canopy_service.py`.
