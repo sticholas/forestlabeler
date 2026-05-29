@@ -18,6 +18,7 @@ class WorkflowRegistryTest(unittest.TestCase):
         self.assertEqual(label_canopy.label, "Label Canopy")
         self.assertFalse(label_canopy.is_experimental)
         self.assertTrue(label_canopy.can_write_data)
+        self.assertIn("Backend extraction", label_canopy.readiness_note)
         self.assertFalse(training_square.is_experimental)
 
     def test_unknown_workflow_raises_value_error(self):

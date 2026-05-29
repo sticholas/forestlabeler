@@ -23,6 +23,7 @@ class WorkflowDefinition:
     source_script: str | None
     purpose: str
     can_write_data: bool
+    readiness_note: str
     experimental_warning: str | None = None
 
     @property
@@ -38,6 +39,7 @@ WORKFLOWS = {
         source_script="prototypes/canopies_workflow/CanopyCrownLabeler.py",
         purpose="Create canopy crown polygons from CHM structure and species context.",
         can_write_data=True,
+        readiness_note="Backend extraction is underway. Interactive map-tool wiring is next.",
     ),
     WORKFLOW_CREATE_TRAINING_SQUARE: WorkflowDefinition(
         key=WORKFLOW_CREATE_TRAINING_SQUARE,
@@ -46,6 +48,7 @@ WORKFLOWS = {
         source_script="prototypes/canopies_workflow/NewTrainingSquare.py",
         purpose="Stamp and enrich training square geometry.",
         can_write_data=True,
+        readiness_note="Workflow is tracked, but production migration has not started yet.",
     ),
     WORKFLOW_PROPOSE_CANOPIES: WorkflowDefinition(
         key=WORKFLOW_PROPOSE_CANOPIES,
@@ -54,6 +57,7 @@ WORKFLOWS = {
         source_script="prototypes/canopies_workflow/PolygonsWithinSquare3.py",
         purpose="Generate reviewable canopy polygon proposals inside selected squares.",
         can_write_data=True,
+        readiness_note="Experimental prototype. Needs QA metrics before production use.",
         experimental_warning="Review proposals before writing; this workflow is not production-ready.",
     ),
     WORKFLOW_DETECT_APEXES: WorkflowDefinition(
@@ -63,6 +67,7 @@ WORKFLOWS = {
         source_script="prototypes/canopies_workflow/ApexDetector.py",
         purpose="Detect reviewable apex candidate points inside selected squares.",
         can_write_data=True,
+        readiness_note="Experimental prototype. Needs accuracy review before production use.",
         experimental_warning="Treat apex detections as assistive candidates until QA improves.",
     ),
     WORKFLOW_VALIDATE_PROJECT: WorkflowDefinition(
@@ -72,6 +77,7 @@ WORKFLOWS = {
         source_script=None,
         purpose="Check selected layers, schema, and readiness before editing.",
         can_write_data=False,
+        readiness_note="Available now.",
     ),
 }
 

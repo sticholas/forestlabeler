@@ -143,6 +143,8 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.workflowMaturityLabel.setText(f"{maturity} - {write_behavior}")
 
         details = workflow.purpose
+        if workflow.readiness_note:
+            details = details + "\n" + workflow.readiness_note
         if workflow.experimental_warning:
             details = details + "\n" + workflow.experimental_warning
         self.workflowDescriptionLabel.setText(details)
