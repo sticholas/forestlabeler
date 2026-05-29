@@ -40,6 +40,7 @@ Start simple and local:
 - Add a small feedback panel for selected canopy features.
 - Store feedback as attributes or a sidecar GeoPackage table.
 - Summarize feedback by mode and tightness.
+- Use `forest_labeler_core/feedback.py` for QGIS-independent feedback validation and summary rules.
 
 Avoid automatic model training until the data is trustworthy and reviewable.
 

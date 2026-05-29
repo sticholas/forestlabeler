@@ -147,3 +147,13 @@ Sixth migration slice:
 
 - `forest_labeler_qgis/species_lookup.py` adds a QGIS adapter that finds species point matches inside canopy polygons.
 - The adapter delegates assignment, warning, and block decisions to `forest_labeler_core/species.py`.
+
+Seventh migration slice:
+
+- `forest_labeler_qgis/canopy_service.py` coordinates species lookup and controlled feature writing behind one Track A service call.
+- Future map tools should call the service instead of repeating species lookup and direct `QgsFeature` writes.
+
+Eighth migration slice:
+
+- `forest_labeler_core/feedback.py` adds QGIS-independent feedback validation and summary rules.
+- `unit_tests/test_feedback.py` covers feedback validation, setting-level summaries, minimum sample requirements, and invalid feedback rejection.

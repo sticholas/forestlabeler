@@ -76,10 +76,11 @@ Feedback should first drive reporting and recommendations. Automated behavior ch
 Production feature-writing should be planned before it is applied:
 
 1. Validate layer and schema.
-2. Build an attribute plan in pure backend code.
-3. Report skipped optional fields.
-4. Apply geometry and attributes through a small QGIS adapter such as `forest_labeler_qgis/feature_writer.py`.
-5. Commit or roll back the edit operation as one bounded action.
+2. Route workflow behavior through a service such as `forest_labeler_qgis/canopy_service.py`.
+3. Build an attribute plan in pure backend code.
+4. Report skipped optional fields and species conflicts.
+5. Apply geometry and attributes through a small QGIS adapter such as `forest_labeler_qgis/feature_writer.py`.
+6. Commit or roll back the edit operation as one bounded action.
 
 This prevents console-script behavior from silently skipping fields or partially writing features.
 
