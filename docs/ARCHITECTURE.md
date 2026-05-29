@@ -55,6 +55,18 @@ Forest Labeler should grow as a toolkit with separate workflow modes:
 
 Each mode should have its own validation contract, UI controls, and write-safety path. Shared algorithm pieces should live in `forest_labeler_core/`; QGIS-specific layer, raster, canvas, and feature-writing adapters should stay thin and explicit.
 
+## Write Safety
+
+Production feature-writing should be planned before it is applied:
+
+1. Validate layer and schema.
+2. Build an attribute plan in pure backend code.
+3. Report skipped optional fields.
+4. Apply geometry and attributes through a small QGIS adapter.
+5. Commit or roll back the edit operation as one bounded action.
+
+This prevents console-script behavior from silently skipping fields or partially writing features.
+
 ## Testing Strategy
 
 Pure algorithm helpers should be unit tested with ordinary Python fixtures. QGIS-dependent behavior should be tested with lightweight integration checks where possible and manually verified in QGIS until a full QGIS test runner is configured.

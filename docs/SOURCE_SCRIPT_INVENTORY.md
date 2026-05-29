@@ -131,3 +131,9 @@ Third migration slice:
 
 - `forest_labeler_core/raster_sources.py` extracts probable-ortho source classification without QGIS imports.
 - `unit_tests/test_raster_sources.py` covers local ortho acceptance, CHM/landcover exclusion, web/tile rejection, provider filtering, and extension filtering.
+
+Fourth migration slice:
+
+- `forest_labeler_core/canopy_attributes.py` extracts canopy feature attribute planning before QGIS writes occur.
+- `forest_labeler_core/species.py` extracts species assignment decisions before geometry/layer adapters are wired.
+- `unit_tests/test_canopy_attributes.py` and `unit_tests/test_species.py` cover metadata planning, fid selection, missing species, single species, and multiple-species blocking behavior.
