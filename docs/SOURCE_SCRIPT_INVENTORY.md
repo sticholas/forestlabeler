@@ -183,3 +183,8 @@ Thirteenth migration slice:
 - `forest_labeler_core/raster_analysis.py` extracts QGIS-independent profile sampling, circular area sampling, local apex search, and inner support threshold calculation.
 - `forest_labeler_qgis/raster_adapter.py` wraps QGIS raster provider sampling behind a callable sampler.
 - `unit_tests/test_raster_analysis.py` covers profile stop behavior, circular sampling, local apex search, missing samples, and threshold selection.
+
+Fourteenth migration slice:
+
+- `forest_labeler_core/crown_inference.py` extracts ownership scoring, competitor penalty, one-profile radius inference, and multi-angle crown radius inference.
+- `unit_tests/test_crown_inference.py` covers ownership, competitor pressure, short profiles, edge-radius inference, and configured angle counts.
