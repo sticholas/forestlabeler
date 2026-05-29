@@ -172,3 +172,8 @@ Eleventh migration slice:
 
 - `forest_labeler_core/geometry_math.py` extracts planar distance, circle point generation, radial point generation, derivatives, and simple line smoothing.
 - `unit_tests/test_geometry_math.py` covers closed rings, input validation, derivatives, and smoothing behavior.
+
+Twelfth migration slice:
+
+- `forest_labeler_qgis/geometry_adapter.py` converts tested point-generation helpers into QGIS polygon geometries.
+- Runtime behavior should be manually verified once the adapter is wired into preview and write workflows.
