@@ -9,6 +9,7 @@ from ..forest_labeler_core.training_polygon_review import (
     REVIEW_STATUS_REJECTED,
     REVIEW_STATUS_UNSURE,
     REVIEWED_FLAG_BY_STATUS,
+    best_training_polygon_pattern_recommendation,
     summarize_training_polygon_reviews,
     training_polygon_quality_insight_lines,
 )
@@ -107,6 +108,17 @@ def training_polygon_layer_quality_insight_lines(layer, min_reviewed=3):
 
     records = _training_polygon_review_records(layer)
     return training_polygon_quality_insight_lines(records, min_reviewed=min_reviewed)
+
+
+def best_training_polygon_layer_recommendation(layer, min_reviewed=3):
+    """Return the strongest reviewed pattern recommendation for a layer."""
+    if layer is None:
+        raise ValueError("Select a Training Polygon target layer.")
+
+    return best_training_polygon_pattern_recommendation(
+        _training_polygon_review_records(layer),
+        min_reviewed=min_reviewed,
+    )
 
 
 def _training_polygon_review_records(layer):

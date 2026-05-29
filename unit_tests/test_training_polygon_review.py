@@ -5,6 +5,7 @@ from forest_labeler_core.training_polygon_review import (
     REVIEW_STATUS_REJECTED,
     REVIEW_STATUS_UNREVIEWED,
     REVIEW_STATUS_UNSURE,
+    best_training_polygon_pattern_recommendation,
     format_training_polygon_review_summary,
     normalize_review_status,
     summarize_training_polygon_reviews_by_key,
@@ -97,6 +98,49 @@ class TrainingPolygonReviewTest(unittest.TestCase):
             lines,
             ("Pattern insights need at least 3 reviewed polygons per shape/side pattern.",),
         )
+
+    def test_best_pattern_recommendation_returns_actionable_controls(self):
+        recommendation = best_training_polygon_pattern_recommendation(
+            [
+                {"shape": "square", "side_lengths": "100, 100, 100, 100", "review_status": "accepted"},
+                {"shape": "square", "side_lengths": "100, 100, 100, 100", "review_status": "accepted"},
+                {"shape": "square", "side_lengths": "100, 100, 100, 100", "review_status": "accepted"},
+                {"shape": "rectangle", "side_lengths": "100, 20, 100, 20", "review_status": "accepted"},
+                {"shape": "rectangle", "side_lengths": "100, 20, 100, 20", "review_status": "rejected"},
+                {"shape": "rectangle", "side_lengths": "100, 20, 100, 20", "review_status": "unsure"},
+            ],
+            min_reviewed=3,
+        )
+
+        self.assertEqual(recommendation.shape_name, "square")
+        self.assertEqual(recommendation.segment_length_m, 100.0)
+        self.assertEqual(recommendation.vertex_count, 4)
+        self.assertEqual(recommendation.side_lengths_m, ())
+        self.assertEqual(recommendation.side_lengths_label, "100, 100, 100, 100")
+
+    def test_best_pattern_recommendation_keeps_custom_lengths(self):
+        recommendation = best_training_polygon_pattern_recommendation(
+            [
+                {"shape": "rectangle", "side_lengths": "100, 20, 100, 20", "review_status": "accepted"},
+                {"shape": "rectangle", "side_lengths": "100, 20, 100, 20", "review_status": "accepted"},
+                {"shape": "rectangle", "side_lengths": "100, 20, 100, 20", "review_status": "accepted"},
+            ],
+            min_reviewed=3,
+        )
+
+        self.assertEqual(recommendation.vertex_count, 4)
+        self.assertEqual(recommendation.segment_length_m, 100.0)
+        self.assertEqual(recommendation.side_lengths_m, (100.0, 20.0, 100.0, 20.0))
+
+    def test_best_pattern_recommendation_requires_enough_reviewed_examples(self):
+        recommendation = best_training_polygon_pattern_recommendation(
+            [
+                {"shape": "square", "side_lengths": "100, 100, 100, 100", "review_status": "accepted"},
+            ],
+            min_reviewed=3,
+        )
+
+        self.assertIsNone(recommendation)
 
 
 if __name__ == "__main__":

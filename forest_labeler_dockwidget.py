@@ -51,6 +51,7 @@ from .forest_labeler_qgis.training_polygon_review import (
     REVIEW_STATUS_ACCEPTED,
     REVIEW_STATUS_REJECTED,
     REVIEW_STATUS_UNSURE,
+    best_training_polygon_layer_recommendation,
     mark_selected_training_polygons,
     summarize_training_polygon_layer_reviews,
     training_polygon_layer_quality_insight_lines,
@@ -89,6 +90,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.activateTrainingShapeButton.clicked.connect(self._request_training_polygon)
         self.repairTrainingPolygonSchemaButton.clicked.connect(self._repair_training_polygon_schema)
         self.summarizeTrainingPolygonReviewsButton.clicked.connect(self._summarize_training_polygon_reviews)
+        self.useBestTrainingPolygonPatternButton.clicked.connect(self._use_best_training_polygon_pattern)
         self.markTrainingPolygonAcceptedButton.clicked.connect(
             lambda: self._mark_selected_training_polygons(REVIEW_STATUS_ACCEPTED)
         )
@@ -180,6 +182,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.refreshLayersButton.setProperty("buttonRole", "secondary")
         self.repairTrainingPolygonSchemaButton.setProperty("buttonRole", "secondary")
         self.summarizeTrainingPolygonReviewsButton.setProperty("buttonRole", "secondary")
+        self.useBestTrainingPolygonPatternButton.setProperty("buttonRole", "secondary")
         self.markTrainingPolygonAcceptedButton.setProperty("buttonRole", "secondary")
         self.markTrainingPolygonRejectedButton.setProperty("buttonRole", "secondary")
         self.markTrainingPolygonUnsureButton.setProperty("buttonRole", "secondary")
@@ -516,6 +519,78 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.statusTextEdit.setPlainText("\n".join(lines + ("",) + tuple(insight_lines)))
         self.statusTextEdit.setVisible(True)
         self._push_message("Training Polygon review summary updated.", Qgis.Info)
+
+    def _use_best_training_polygon_pattern(self):
+        try:
+            recommendation = best_training_polygon_layer_recommendation(
+                self.selected_training_polygon_layer()
+            )
+        except ValueError as exc:
+            self.statusSummaryLabel.setText("Could not find a reviewed Training Polygon pattern.")
+            self.statusTextEdit.setPlainText(str(exc))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Training Polygon recommendation failed.", Qgis.Warning)
+            return
+
+        if recommendation is None:
+            self.statusSummaryLabel.setText("No reviewed Training Polygon pattern is ready yet.")
+            self.statusTextEdit.setPlainText(
+                "Review at least 3 polygons with the same shape and side lengths before using a best pattern."
+            )
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Training Polygon recommendation needs more reviewed examples.", Qgis.Info)
+            return
+
+        accepted_pct = round(recommendation.accepted_rate * 100.0, 1)
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Use Best Reviewed Pattern",
+            (
+                "Apply this reviewed pattern to the Training Polygon controls?\n\n"
+                f"{recommendation.shape_name}, {recommendation.side_lengths_label} m\n"
+                f"{accepted_pct}% accepted across {recommendation.reviewed_total} reviewed polygons."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.Yes,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        self._set_custom_training_polygon_controls(
+            recommendation.segment_length_m,
+            recommendation.vertex_count,
+            recommendation.side_lengths_m,
+        )
+        self.statusSummaryLabel.setText("Best reviewed Training Polygon pattern applied.")
+        self.statusTextEdit.setPlainText(
+            f"{recommendation.shape_name}: {recommendation.side_lengths_label} m"
+        )
+        self.statusTextEdit.setVisible(True)
+        self._push_message("Best reviewed Training Polygon pattern applied.", Qgis.Success)
+
+    def _set_custom_training_polygon_controls(self, segment_length_m, vertex_count, side_lengths_m):
+        custom_index = self.trainingPolygonPresetComboBox.findData(
+            next(
+                (
+                    preset
+                    for preset in list_training_polygon_presets()
+                    if preset.key == "custom"
+                ),
+                None,
+            )
+        )
+        if custom_index != -1:
+            self.trainingPolygonPresetComboBox.setCurrentIndex(custom_index)
+
+        self.squareSegmentLengthSpinBox.setValue(segment_length_m)
+        self.squareVertexCountSpinBox.setValue(vertex_count)
+        self.squareCustomSideLengthsLineEdit.setText(
+            ", ".join(f"{length:g}" for length in side_lengths_m)
+            if side_lengths_m
+            else ""
+        )
+        self.trainingAdvancedCheckBox.setChecked(bool(side_lengths_m))
+        self._update_training_square_summary()
 
     def _target_layer_for_workflow(self, workflow_key):
         if workflow_key == WORKFLOW_CREATE_TRAINING_SQUARE:

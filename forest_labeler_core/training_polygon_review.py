@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .training_square import parse_side_lengths_text
+
 
 REVIEW_STATUS_ACCEPTED = "accepted"
 REVIEW_STATUS_REJECTED = "rejected"
@@ -43,8 +45,24 @@ class TrainingPolygonReviewSummary:
 
 @dataclass(frozen=True)
 class TrainingPolygonReviewBucket:
+    key: tuple
     label: str
     summary: TrainingPolygonReviewSummary
+
+
+@dataclass(frozen=True)
+class TrainingPolygonPatternRecommendation:
+    shape_name: str
+    segment_length_m: float
+    vertex_count: int
+    side_lengths_m: tuple
+    accepted_rate: float
+    reviewed_total: int
+
+    @property
+    def side_lengths_label(self):
+        lengths = self.side_lengths_m or tuple(self.segment_length_m for _ in range(self.vertex_count))
+        return ", ".join(f"{length:g}" for length in lengths)
 
 
 def normalize_review_status(status, reviewed=None):
@@ -109,6 +127,7 @@ def summarize_training_polygon_reviews_by_key(records, key_fields):
     for key, bucket_records in grouped.items():
         buckets.append(
             TrainingPolygonReviewBucket(
+                key=key,
                 label=_format_bucket_label(key_fields, key),
                 summary=summarize_training_polygon_reviews(bucket_records),
             )
@@ -158,6 +177,27 @@ def training_polygon_quality_insight_lines(records, min_reviewed=3):
     )
 
 
+def best_training_polygon_pattern_recommendation(records, min_reviewed=3):
+    """Return the strongest reviewed shape/side-length pattern, when enough data exists."""
+    recommendations = []
+    for bucket in summarize_training_polygon_reviews_by_key(records, ("shape", "side_lengths")):
+        if bucket.summary.reviewed_total < min_reviewed:
+            continue
+        recommendation = _recommendation_from_bucket(bucket)
+        if recommendation is not None:
+            recommendations.append(recommendation)
+    if not recommendations:
+        return None
+
+    return max(
+        recommendations,
+        key=lambda recommendation: (
+            recommendation.accepted_rate,
+            recommendation.reviewed_total,
+        ),
+    )
+
+
 def format_training_polygon_review_summary(summary):
     """Return short human-readable lines for the dock status panel."""
     accepted_pct = round(summary.accepted_rate * 100.0, 1)
@@ -187,3 +227,28 @@ def _format_bucket_label(key_fields, key):
         if cleaned:
             parts.append(f"{field_name}={cleaned}")
     return " | ".join(parts) if parts else "unspecified"
+
+
+def _recommendation_from_bucket(bucket):
+    shape_name, side_lengths_text = bucket.key
+    try:
+        side_lengths = parse_side_lengths_text(side_lengths_text)
+    except (TypeError, ValueError):
+        return None
+    if len(side_lengths) < 3:
+        return None
+    segment_length = side_lengths[0]
+    custom_lengths = () if _all_lengths_match(side_lengths) else side_lengths
+    return TrainingPolygonPatternRecommendation(
+        shape_name=str(shape_name or f"{len(side_lengths)}-gon"),
+        segment_length_m=segment_length,
+        vertex_count=len(side_lengths),
+        side_lengths_m=custom_lengths,
+        accepted_rate=bucket.summary.accepted_rate,
+        reviewed_total=bucket.summary.reviewed_total,
+    )
+
+
+def _all_lengths_match(lengths):
+    first = lengths[0]
+    return all(abs(length - first) < 0.001 for length in lengths)

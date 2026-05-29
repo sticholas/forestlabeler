@@ -292,3 +292,9 @@ Thirty-second migration slice:
 - Training Polygon review summaries now include pattern insights once a shape/side-length pattern has enough reviewed examples.
 - Pattern insights identify the best-performing pattern by acceptance rate and the pattern that most needs attention by rejected/unsure count.
 - The insight engine is pure and tested, which gives future adaptive recommendations a stable contract before any automated behavior is introduced.
+
+Thirty-third migration slice:
+
+- Training Polygon now has a `Use Best Reviewed Pattern` action that can apply the strongest reviewed shape/side-length pattern back into the digitizing controls.
+- Recommendations require enough reviewed examples, ask for confirmation, and keep automated behavior user-controlled.
+- The recommendation engine returns typed control settings, including vertex count, segment length, and custom side lengths, so future adaptive presets can reuse the same contract.
