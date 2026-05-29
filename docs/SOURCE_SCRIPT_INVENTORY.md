@@ -142,3 +142,8 @@ Fifth migration slice:
 
 - `forest_labeler_qgis/feature_writer.py` adds the first controlled QGIS adapter for applying canopy feature writes.
 - The adapter consumes pure core plans and returns structured success, warning, and error results instead of writing silently from a map tool.
+
+Sixth migration slice:
+
+- `forest_labeler_qgis/species_lookup.py` adds a QGIS adapter that finds species point matches inside canopy polygons.
+- The adapter delegates assignment, warning, and block decisions to `forest_labeler_core/species.py`.

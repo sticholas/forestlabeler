@@ -60,6 +60,17 @@ Current package boundaries:
 - `forest_labeler_core/`: pure business rules and algorithm helpers that can run in ordinary Python.
 - `forest_labeler_qgis/`: QGIS adapters for layers, features, rasters, map tools, edit sessions, and UI-facing side effects.
 
+## Feedback Loop
+
+Production workflows should record enough context for later QA and improvement:
+
+- settings used to generate a feature
+- whether the user accepted, edited, rejected, or was unsure
+- common correction reasons
+- project/layer context
+
+Feedback should first drive reporting and recommendations. Automated behavior changes should come later, after enough reviewed examples exist.
+
 ## Write Safety
 
 Production feature-writing should be planned before it is applied:

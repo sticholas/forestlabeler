@@ -29,3 +29,4 @@ This project is in foundation phase. The installed plugin opens in QGIS, but the
 - [Source Script Inventory](docs/SOURCE_SCRIPT_INVENTORY.md)
 - [Product Tracks](docs/PRODUCT_TRACKS.md)
 - [Decision Framework](docs/DECISION_FRAMEWORK.md)
+- [Feedback And Evaluation](docs/FEEDBACK_AND_EVALUATION.md)
