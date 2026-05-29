@@ -46,6 +46,7 @@ from .forest_labeler_core.workflows import (
     WORKFLOW_LABEL_CANOPY,
     list_workflows,
 )
+from .forest_labeler_qgis.training_polygon_schema import repair_training_polygon_schema
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'forest_labeler_dockwidget_base.ui'))
@@ -77,6 +78,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.validateProjectButton.clicked.connect(self.validate_project)
         self.activateLabelingButton.clicked.connect(self._request_labeling)
         self.activateTrainingShapeButton.clicked.connect(self._request_training_polygon)
+        self.repairTrainingPolygonSchemaButton.clicked.connect(self._repair_training_polygon_schema)
         self.trainingAdvancedCheckBox.toggled.connect(self._update_training_advanced_controls)
         self.squareSegmentLengthSpinBox.valueChanged.connect(self._update_training_square_summary)
         self.squareVertexCountSpinBox.valueChanged.connect(self._update_training_square_summary)
@@ -157,6 +159,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.activateTrainingShapeButton.setProperty("buttonRole", "primary")
         self.validateProjectButton.setProperty("buttonRole", "secondary")
         self.refreshLayersButton.setProperty("buttonRole", "secondary")
+        self.repairTrainingPolygonSchemaButton.setProperty("buttonRole", "secondary")
         self.workflowMaturityLabel.setProperty("tone", "badge")
         self.workflowDescriptionLabel.setProperty("tone", "muted")
         self.trainingSquareSummaryLabel.setProperty("tone", "hint")
@@ -407,6 +410,42 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             return
 
         self.activateTrainingShapeRequested.emit()
+
+    def _repair_training_polygon_schema(self):
+        layer = self.selected_training_polygon_layer()
+        if layer is None:
+            self._push_message("Select a Training Polygon target layer first.", Qgis.Warning)
+            return
+
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Add Training Polygon Fields",
+            (
+                f"Add missing optional Forest Labeler metadata fields to '{layer.name()}'?\n\n"
+                "This updates the selected layer schema and keeps existing fields and features."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        result = repair_training_polygon_schema(layer)
+        if result.ok and result.added_fields:
+            self.statusSummaryLabel.setText(f"Added {len(result.added_fields)} metadata field(s).")
+            self.statusTextEdit.setPlainText(", ".join(result.added_fields))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Training Polygon metadata fields added.", Qgis.Success)
+        elif result.ok:
+            self.statusSummaryLabel.setText("Training Polygon metadata fields already exist.")
+            self.statusTextEdit.clear()
+            self.statusTextEdit.setVisible(False)
+            self._push_message("Training Polygon schema already looks ready.", Qgis.Info)
+        else:
+            self.statusSummaryLabel.setText("Could not update Training Polygon schema.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Training Polygon schema update failed.", Qgis.Warning)
 
     def _target_layer_for_workflow(self, workflow_key):
         if workflow_key == WORKFLOW_CREATE_TRAINING_SQUARE:

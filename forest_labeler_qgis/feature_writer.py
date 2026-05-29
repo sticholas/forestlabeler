@@ -140,6 +140,8 @@ def add_training_shape_feature(
     ortho_id=None,
     plot_area=None,
     landcover_summary=None,
+    reviewed=0,
+    review_status="unreviewed",
     require_editable=True,
 ):
     """Add a training polygon feature through a bounded write path."""
@@ -175,6 +177,8 @@ def add_training_shape_feature(
             ortho_id=ortho_id,
             plot_area=plot_area,
             landcover_summary=landcover_summary,
+            reviewed=reviewed,
+            review_status=review_status,
         ),
         layer_field_names(target_layer),
     )

@@ -7,28 +7,44 @@ from dataclasses import dataclass
 from .canopy_attributes import AttributePlan
 
 
-TRAINING_POLYGON_RECOMMENDED_FIELDS = (
-    "fid",
-    "segment_m",
-    "side_m",
-    "side_lengths",
-    "nodes",
-    "vertices",
-    "shape",
-    "angle",
-    "area_m2",
-    "ortho_id",
-    "plot_area",
-    "Detailed_L_count",
-    "Detailed_L_majority",
-    "Detailed_L_majority_pct",
-    "Detailed_L1",
-    "Detailed_L1_pct",
-    "Detailed_L2",
-    "Detailed_L2_pct",
-    "Detailed_L3",
-    "Detailed_L3_pct",
-    "Detailed_L_other_pct",
+@dataclass(frozen=True)
+class TrainingPolygonFieldSpec:
+    name: str
+    value_type: str
+    length: int | None = None
+    precision: int | None = None
+
+
+TRAINING_POLYGON_FIELD_SPECS = (
+    TrainingPolygonFieldSpec("fid", "int"),
+    TrainingPolygonFieldSpec("segment_m", "double", precision=2),
+    TrainingPolygonFieldSpec("side_m", "double", precision=2),
+    TrainingPolygonFieldSpec("side_lengths", "string", length=160),
+    TrainingPolygonFieldSpec("nodes", "int"),
+    TrainingPolygonFieldSpec("vertices", "int"),
+    TrainingPolygonFieldSpec("shape", "string", length=40),
+    TrainingPolygonFieldSpec("angle", "double", precision=2),
+    TrainingPolygonFieldSpec("area_m2", "double", precision=2),
+    TrainingPolygonFieldSpec("ortho_id", "string", length=254),
+    TrainingPolygonFieldSpec("plot_area", "string", length=120),
+    TrainingPolygonFieldSpec("Detailed_L_count", "int"),
+    TrainingPolygonFieldSpec("Detailed_L_majority", "string", length=120),
+    TrainingPolygonFieldSpec("Detailed_L_majority_pct", "double", precision=1),
+    TrainingPolygonFieldSpec("Detailed_L1", "string", length=120),
+    TrainingPolygonFieldSpec("Detailed_L1_pct", "double", precision=1),
+    TrainingPolygonFieldSpec("Detailed_L2", "string", length=120),
+    TrainingPolygonFieldSpec("Detailed_L2_pct", "double", precision=1),
+    TrainingPolygonFieldSpec("Detailed_L3", "string", length=120),
+    TrainingPolygonFieldSpec("Detailed_L3_pct", "double", precision=1),
+    TrainingPolygonFieldSpec("Detailed_L_other_pct", "double", precision=1),
+    TrainingPolygonFieldSpec("reviewed", "int"),
+    TrainingPolygonFieldSpec("review_status", "string", length=40),
+    TrainingPolygonFieldSpec("review_note", "string", length=254),
+)
+
+
+TRAINING_POLYGON_RECOMMENDED_FIELDS = tuple(
+    field_spec.name for field_spec in TRAINING_POLYGON_FIELD_SPECS
 )
 
 
@@ -44,6 +60,8 @@ class TrainingShapeAttributeInputs:
     ortho_id: str | None = None
     plot_area: str | None = None
     landcover_summary: dict | None = None
+    reviewed: int = 0
+    review_status: str = "unreviewed"
 
 
 def build_training_shape_attribute_plan(inputs: TrainingShapeAttributeInputs, available_fields):
@@ -61,6 +79,8 @@ def build_training_shape_attribute_plan(inputs: TrainingShapeAttributeInputs, av
         "area_m2": round(inputs.geometry_area_m2, 2),
         "ortho_id": inputs.ortho_id,
         "plot_area": inputs.plot_area,
+        "reviewed": inputs.reviewed,
+        "review_status": inputs.review_status,
     }
     if inputs.landcover_summary:
         desired.update(inputs.landcover_summary)

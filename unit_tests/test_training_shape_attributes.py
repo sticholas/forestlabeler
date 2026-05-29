@@ -1,12 +1,26 @@
 import unittest
 
 from forest_labeler_core.training_shape_attributes import (
+    TRAINING_POLYGON_FIELD_SPECS,
+    TRAINING_POLYGON_RECOMMENDED_FIELDS,
     TrainingShapeAttributeInputs,
     build_training_shape_attribute_plan,
 )
 
 
 class TrainingShapeAttributeTest(unittest.TestCase):
+    def test_recommended_fields_follow_schema_specs(self):
+        self.assertEqual(
+            TRAINING_POLYGON_RECOMMENDED_FIELDS,
+            tuple(field_spec.name for field_spec in TRAINING_POLYGON_FIELD_SPECS),
+        )
+        field_types = {
+            field_spec.name: field_spec.value_type for field_spec in TRAINING_POLYGON_FIELD_SPECS
+        }
+        self.assertEqual(field_types["fid"], "int")
+        self.assertEqual(field_types["area_m2"], "double")
+        self.assertEqual(field_types["review_status"], "string")
+
     def test_builds_attribute_plan_for_available_fields(self):
         plan = build_training_shape_attribute_plan(
             TrainingShapeAttributeInputs(
@@ -42,6 +56,8 @@ class TrainingShapeAttributeTest(unittest.TestCase):
                 "Detailed_L_majority",
                 "Detailed_L_majority_pct",
                 "Detailed_L_other_pct",
+                "reviewed",
+                "review_status",
             },
         )
 
@@ -60,6 +76,8 @@ class TrainingShapeAttributeTest(unittest.TestCase):
         self.assertEqual(plan.values["Detailed_L_majority"], "Dry Forest")
         self.assertEqual(plan.values["Detailed_L_majority_pct"], 72.5)
         self.assertEqual(plan.values["Detailed_L_other_pct"], 0.0)
+        self.assertEqual(plan.values["reviewed"], 0)
+        self.assertEqual(plan.values["review_status"], "unreviewed")
 
     def test_records_skipped_optional_fields(self):
         plan = build_training_shape_attribute_plan(

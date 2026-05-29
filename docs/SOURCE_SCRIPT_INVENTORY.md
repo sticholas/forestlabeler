@@ -268,3 +268,9 @@ Twenty-eighth migration slice:
 - The map tool keeps `Q` / `E` rotation and adds `R` for exact angle entry during digitizing.
 - Training Polygon validation now recommends a fuller metadata schema for side lengths, plot area, ortho source, and land-cover summaries.
 - Stamped polygons can now populate optional `plot_area` from the project vegetation area layer and `Detailed_L*` land-cover summary fields from `CAH_LandCover` when those supporting layers are loaded.
+
+Twenty-ninth migration slice:
+
+- Training Polygon now has an `Add Metadata Fields` action that adds missing optional fields to the selected target layer after user confirmation.
+- Training Polygon schema definitions now live in one typed field-spec list so validation, repair actions, and write behavior stay aligned.
+- New Training Polygon features now default optional review metadata to `reviewed = 0` and `review_status = unreviewed` when those fields exist.
