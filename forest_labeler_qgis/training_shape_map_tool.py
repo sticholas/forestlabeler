@@ -28,6 +28,8 @@ class TrainingShapeMapToolSettings:
 class TrainingShapeMapTool(QgsMapTool):
     """Preview and stamp regular training polygons."""
 
+    ROTATION_STEP_DEG = 3.0
+
     def __init__(self, iface, settings: TrainingShapeMapToolSettings):
         super().__init__(iface.mapCanvas())
         self.iface = iface
@@ -66,6 +68,12 @@ class TrainingShapeMapTool(QgsMapTool):
         if event.key() == Qt.Key.Key_Escape:
             self.preview_band.hide()
             self.canvas.unsetMapTool(self)
+            return
+        if event.key() == Qt.Key.Key_Q:
+            self.rotate_preview(-self.ROTATION_STEP_DEG)
+            return
+        if event.key() == Qt.Key.Key_E:
+            self.rotate_preview(self.ROTATION_STEP_DEG)
             return
         super().keyPressEvent(event)
 
@@ -120,6 +128,18 @@ class TrainingShapeMapTool(QgsMapTool):
             return
         self.preview_band.setToGeometry(QgsGeometry(geometry), self.settings.target_layer)
         self.preview_band.show()
+
+    def rotate_preview(self, delta_degrees):
+        self.params = build_training_shape_parameters(
+            self.params.segment_length_m,
+            self.params.vertex_count,
+            self.params.angle_deg + delta_degrees,
+        )
+        self.refresh_preview()
+        self.iface.messageBar().pushInfo(
+            "Forest Labeler",
+            f"Training shape angle: {self.params.angle_deg:.1f}°",
+        )
 
     def _geometry_for_project_center(self, center_project):
         target_center = self._transform_point(

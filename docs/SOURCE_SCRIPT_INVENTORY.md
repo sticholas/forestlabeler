@@ -229,3 +229,8 @@ Twenty-first migration slice:
 - Training Square controls now treat nodes as polygon vertices/sides: 3 creates a triangle, 4 a square, 6 a hexagon, and higher counts create regular n-gons.
 - Added `forest_labeler_qgis/training_shape_map_tool.py` so the workflow has an activation button, live preview, and click-to-stamp behavior.
 - Segment length now means side length, so the default 4 vertices with 100 m segments creates the existing 100 m square behavior.
+
+Twenty-second migration slice:
+
+- Training Shape map tool restores the original `Q` / `E` rotation shortcuts with 3 degree steps.
+- Rotation updates the live preview and writes the current angle to the stamped feature when the target layer has an `angle` field.
