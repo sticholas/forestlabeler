@@ -167,3 +167,8 @@ Tenth migration slice:
 
 - The dock workflow selector now reads from `forest_labeler_core/workflows.py`.
 - Users can see workflow maturity, write behavior, and experimental warnings before individual tools are wired in.
+
+Eleventh migration slice:
+
+- `forest_labeler_core/geometry_math.py` extracts planar distance, circle point generation, radial point generation, derivatives, and simple line smoothing.
+- `unit_tests/test_geometry_math.py` covers closed rings, input validation, derivatives, and smoothing behavior.
