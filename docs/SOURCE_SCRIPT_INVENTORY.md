@@ -234,3 +234,9 @@ Twenty-second migration slice:
 
 - Training Shape map tool restores the original `Q` / `E` rotation shortcuts with 3 degree steps.
 - Rotation updates the live preview and writes the current angle to the stamped feature when the target layer has an `angle` field.
+
+Twenty-third migration slice:
+
+- `forest_labeler_core/training_shape_attributes.py` adds tested metadata planning for stamped training shapes.
+- Training Shape writes optional `fid`, side length, vertex count, shape name, angle, area, and ortho source fields when present.
+- `forest_labeler_qgis/training_shape_map_tool.py` now uses the shared feature-writing path instead of setting attributes directly.

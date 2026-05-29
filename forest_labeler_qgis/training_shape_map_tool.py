@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QMessageBox
-from qgis.core import QgsCoordinateTransform, QgsFeature, QgsGeometry, QgsPointXY, QgsProject, QgsWkbTypes
+from qgis.core import QgsCoordinateTransform, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsWkbTypes
 from qgis.gui import QgsMapTool, QgsRubberBand
 
 from ..forest_labeler_core.training_square import (
@@ -15,6 +15,8 @@ from ..forest_labeler_core.training_square import (
     training_shape_ring_points,
 )
 from .geometry_adapter import polygon_geometry_from_points
+from .feature_writer import add_training_shape_feature
+from ..forest_labeler_core.raster_sources import is_probable_ortho_source
 
 
 @dataclass(frozen=True)
@@ -100,24 +102,26 @@ class TrainingShapeMapTool(QgsMapTool):
             QMessageBox.warning(None, "No shape geometry", "Could not build a training shape here.")
             return
 
-        feature = QgsFeature(target_layer.fields())
-        feature.setGeometry(geometry)
-        self._safe_set_attr(feature, "angle", self.params.angle_deg)
-        self._safe_set_attr(feature, "segment_m", self.params.segment_length_m)
-        self._safe_set_attr(feature, "nodes", self.params.vertex_count)
-        self._safe_set_attr(feature, "shape", self.params.shape_name)
-
-        if not target_layer.addFeature(feature):
-            QMessageBox.warning(None, "Add feature failed", "Could not add the training shape.")
+        write_result = add_training_shape_feature(
+            target_layer,
+            geometry,
+            segment_length_m=self.params.segment_length_m,
+            vertex_count=self.params.vertex_count,
+            shape_name=self.params.shape_name,
+            angle_deg=self.params.angle_deg,
+            ortho_id=self._find_ortho_source(center_project),
+        )
+        if not write_result.ok:
+            QMessageBox.warning(None, "Add feature failed", "\n".join(write_result.errors))
             return
 
-        target_layer.updateExtents()
-        target_layer.triggerRepaint()
         self.canvas.refresh()
         self.iface.messageBar().pushSuccess(
             "Forest Labeler",
             f"Training {self.params.shape_name} added.",
         )
+        if write_result.warnings:
+            self.iface.messageBar().pushWarning("Forest Labeler", " ".join(write_result.warnings))
 
     def refresh_preview(self):
         if self.current_center_project is None:
@@ -156,6 +160,18 @@ class TrainingShapeMapTool(QgsMapTool):
         transform = QgsCoordinateTransform(source_crs, target_crs, QgsProject.instance())
         return transform.transform(QgsPointXY(point))
 
-    def _safe_set_attr(self, feature, field_name, value):
-        if feature.fields().indexOf(field_name) != -1:
-            feature[field_name] = value
+    def _find_ortho_source(self, center_project):
+        for layer in QgsProject.instance().layerTreeRoot().layerOrder():
+            if not isinstance(layer, QgsRasterLayer):
+                continue
+            if not is_probable_ortho_source(
+                layer.name(),
+                layer.source(),
+                layer.providerType(),
+                excluded_names={"CAH_LandCover", "chm", "canopy height model"},
+            ):
+                continue
+            center_layer = self._transform_point(center_project, self.project_crs, layer.crs())
+            if layer.extent().contains(center_layer):
+                return layer.source()
+        return None
