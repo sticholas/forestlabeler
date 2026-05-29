@@ -16,8 +16,10 @@ class CanopyAttributeTest(unittest.TestCase):
                 geometry_area_m2=41.987,
                 apex_height_m=12.345,
                 canopy_mode="MIXED",
+                crown_tightness=11,
                 species="MAM",
                 reviewed=0,
+                review_status="unreviewed",
                 refined=1,
                 ortho_id="X:/imagery/ortho.tif",
             ),
@@ -28,8 +30,10 @@ class CanopyAttributeTest(unittest.TestCase):
                 "area_m2",
                 "apex_h",
                 "mode",
+                "tightness",
                 "species",
                 "reviewed",
+                "review_status",
                 "refined",
                 "ortho_id",
             },
@@ -40,7 +44,9 @@ class CanopyAttributeTest(unittest.TestCase):
         self.assertEqual(plan.values["diam_m"], 6.91)
         self.assertEqual(plan.values["area_m2"], 41.99)
         self.assertEqual(plan.values["apex_h"], 12.35)
+        self.assertEqual(plan.values["tightness"], 11)
         self.assertEqual(plan.values["species"], "MAM")
+        self.assertEqual(plan.values["review_status"], "unreviewed")
         self.assertEqual(plan.skipped_fields, ())
 
     def test_records_skipped_optional_fields(self):

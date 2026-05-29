@@ -11,14 +11,44 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
+class CanopyFieldSpec:
+    name: str
+    value_type: str
+    length: int | None = None
+    precision: int | None = None
+
+
+CANOPY_FIELD_SPECS = (
+    CanopyFieldSpec("fid", "int"),
+    CanopyFieldSpec("radius_m", "double", precision=2),
+    CanopyFieldSpec("diam_m", "double", precision=2),
+    CanopyFieldSpec("area_m2", "double", precision=2),
+    CanopyFieldSpec("apex_h", "double", precision=2),
+    CanopyFieldSpec("mode", "string", length=40),
+    CanopyFieldSpec("tightness", "int"),
+    CanopyFieldSpec("species", "string", length=80),
+    CanopyFieldSpec("reviewed", "int"),
+    CanopyFieldSpec("review_status", "string", length=40),
+    CanopyFieldSpec("review_note", "string", length=254),
+    CanopyFieldSpec("refined", "int"),
+    CanopyFieldSpec("ortho_id", "string", length=254),
+)
+
+
+CANOPY_RECOMMENDED_FIELDS = tuple(field_spec.name for field_spec in CANOPY_FIELD_SPECS)
+
+
+@dataclass(frozen=True)
 class CanopyAttributeInputs:
     next_fid: int | None
     seed_radius_m: float
     geometry_area_m2: float
     apex_height_m: float | None
     canopy_mode: str
-    species: str | None
+    crown_tightness: int | None = None
+    species: str | None = None
     reviewed: int = 0
+    review_status: str = "unreviewed"
     refined: int = 0
     ortho_id: str | None = None
 
@@ -39,8 +69,10 @@ def build_canopy_attribute_plan(inputs: CanopyAttributeInputs, available_fields)
         "area_m2": round(inputs.geometry_area_m2, 2),
         "apex_h": round(inputs.apex_height_m, 2) if inputs.apex_height_m is not None else None,
         "mode": inputs.canopy_mode,
+        "tightness": inputs.crown_tightness,
         "species": inputs.species,
         "reviewed": inputs.reviewed,
+        "review_status": inputs.review_status,
         "refined": inputs.refined,
         "ortho_id": inputs.ortho_id,
     }

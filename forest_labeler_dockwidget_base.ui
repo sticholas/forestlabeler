@@ -160,6 +160,62 @@
          </property>
         </widget>
        </item>
+       <item>
+        <widget class="QPushButton" name="repairCanopySchemaButton">
+         <property name="text">
+          <string>Add Canopy Metadata Fields</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="summarizeCanopyReviewsButton">
+         <property name="text">
+          <string>Canopy Review Summary</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="useBestCanopyToolButton">
+         <property name="text">
+          <string>Use Best Canopy Tool</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="canopyReviewNoteLineEdit">
+         <property name="placeholderText">
+          <string>Optional review note for selected canopies</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="canopyReviewLayout">
+         <property name="spacing">
+          <number>6</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="markCanopyAcceptedButton">
+           <property name="text">
+            <string>Accept</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="markCanopyRejectedButton">
+           <property name="text">
+            <string>Reject</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="markCanopyUnsureButton">
+           <property name="text">
+            <string>Unsure</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
       </layout>
      </widget>
     </item>

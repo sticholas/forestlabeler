@@ -19,7 +19,8 @@ class CanopyCreationRequest:
     geometry: object
     seed_radius_m: float
     canopy_mode: str
-    refined: int
+    crown_tightness: int | None = None
+    refined: int = 0
     apex_height_m: float | None = None
     species_layer: object | None = None
     species_code_field: str = SPECIES_CODE_FIELD
@@ -88,6 +89,7 @@ def create_canopy_feature(request: CanopyCreationRequest):
         seed_radius_m=request.seed_radius_m,
         apex_height_m=request.apex_height_m,
         canopy_mode=request.canopy_mode,
+        crown_tightness=request.crown_tightness,
         species=species_value,
         refined=request.refined,
         ortho_id=request.ortho_id,

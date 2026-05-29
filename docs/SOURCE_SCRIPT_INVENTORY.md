@@ -298,3 +298,10 @@ Thirty-third migration slice:
 - Training Polygon now has a `Use Best Reviewed Pattern` action that can apply the strongest reviewed shape/side-length pattern back into the digitizing controls.
 - Recommendations require enough reviewed examples, ask for confirmation, and keep automated behavior user-controlled.
 - The recommendation engine returns typed control settings, including vertex count, segment length, and custom side lengths, so future adaptive presets can reuse the same contract.
+
+Thirty-fourth migration slice:
+
+- Refocused feedback intelligence on the main Label Canopy workflow rather than the Training Polygon helper.
+- Canopy features now optionally store the crown tightness that produced them, alongside mode, radius, refinement, and review fields.
+- Label Canopy now has schema repair, review actions, review summary, quality insights, and `Use Best Canopy Tool` controls.
+- Canopy quality insights group reviewed crowns by mode and tightness so we can evaluate which press-hold settings are producing the best tree crowns.

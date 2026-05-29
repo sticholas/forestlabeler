@@ -13,8 +13,10 @@ TARGET_RECOMMENDED_FIELDS = (
     "area_m2",
     "apex_h",
     "mode",
+    "tightness",
     "reviewed",
+    "review_status",
+    "review_note",
     "refined",
     "ortho_id",
 )
-

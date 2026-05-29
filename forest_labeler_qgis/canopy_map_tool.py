@@ -129,6 +129,7 @@ class CanopyLabelMapTool(QgsMapTool):
                 geometry=self.current_geometry,
                 seed_radius_m=self.current_radius_m,
                 canopy_mode=self.settings.canopy_mode,
+                crown_tightness=self.settings.crown_tightness,
                 refined=1 if build_result is not None and build_result.refined else 0,
                 apex_height_m=build_result.apex_height_m if build_result is not None else None,
                 species_layer=self.settings.species_layer,

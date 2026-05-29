@@ -35,6 +35,7 @@ from .forest_labeler_core.config import (
     TARGET_LAYER_NAME,
 )
 from .forest_labeler_core.layer_validation import validate_workflow_layers
+from .forest_labeler_core.canopy_review import format_canopy_review_summary
 from .forest_labeler_core.training_square import (
     build_training_shape_parameters,
     list_training_polygon_presets,
@@ -46,6 +47,16 @@ from .forest_labeler_core.workflows import (
     WORKFLOW_LABEL_CANOPY,
     list_workflows,
 )
+from .forest_labeler_qgis.canopy_review import (
+    REVIEW_STATUS_ACCEPTED as CANOPY_REVIEW_ACCEPTED,
+    REVIEW_STATUS_REJECTED as CANOPY_REVIEW_REJECTED,
+    REVIEW_STATUS_UNSURE as CANOPY_REVIEW_UNSURE,
+    best_canopy_layer_recommendation,
+    canopy_layer_quality_insight_lines,
+    mark_selected_canopies,
+    summarize_canopy_layer_reviews,
+)
+from .forest_labeler_qgis.canopy_schema import repair_canopy_schema
 from .forest_labeler_qgis.training_polygon_schema import repair_training_polygon_schema
 from .forest_labeler_qgis.training_polygon_review import (
     REVIEW_STATUS_ACCEPTED,
@@ -87,6 +98,18 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.refreshLayersButton.clicked.connect(self.refresh_layers)
         self.validateProjectButton.clicked.connect(self.validate_project)
         self.activateLabelingButton.clicked.connect(self._request_labeling)
+        self.repairCanopySchemaButton.clicked.connect(self._repair_canopy_schema)
+        self.summarizeCanopyReviewsButton.clicked.connect(self._summarize_canopy_reviews)
+        self.useBestCanopyToolButton.clicked.connect(self._use_best_canopy_tool)
+        self.markCanopyAcceptedButton.clicked.connect(
+            lambda: self._mark_selected_canopies(CANOPY_REVIEW_ACCEPTED)
+        )
+        self.markCanopyRejectedButton.clicked.connect(
+            lambda: self._mark_selected_canopies(CANOPY_REVIEW_REJECTED)
+        )
+        self.markCanopyUnsureButton.clicked.connect(
+            lambda: self._mark_selected_canopies(CANOPY_REVIEW_UNSURE)
+        )
         self.activateTrainingShapeButton.clicked.connect(self._request_training_polygon)
         self.repairTrainingPolygonSchemaButton.clicked.connect(self._repair_training_polygon_schema)
         self.summarizeTrainingPolygonReviewsButton.clicked.connect(self._summarize_training_polygon_reviews)
@@ -178,6 +201,12 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def _apply_product_styling(self):
         self.activateLabelingButton.setProperty("buttonRole", "primary")
         self.activateTrainingShapeButton.setProperty("buttonRole", "primary")
+        self.repairCanopySchemaButton.setProperty("buttonRole", "secondary")
+        self.summarizeCanopyReviewsButton.setProperty("buttonRole", "secondary")
+        self.useBestCanopyToolButton.setProperty("buttonRole", "secondary")
+        self.markCanopyAcceptedButton.setProperty("buttonRole", "secondary")
+        self.markCanopyRejectedButton.setProperty("buttonRole", "secondary")
+        self.markCanopyUnsureButton.setProperty("buttonRole", "secondary")
         self.validateProjectButton.setProperty("buttonRole", "secondary")
         self.refreshLayersButton.setProperty("buttonRole", "secondary")
         self.repairTrainingPolygonSchemaButton.setProperty("buttonRole", "secondary")
@@ -416,6 +445,128 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             return
 
         self.activateLabelingRequested.emit()
+
+    def _repair_canopy_schema(self):
+        layer = self._current_layer(self.targetLayerComboBox)
+        if layer is None:
+            self._push_message("Select a target canopy polygon layer first.", Qgis.Warning)
+            return
+
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Add Canopy Metadata Fields",
+            (
+                f"Add missing optional Forest Labeler canopy fields to '{layer.name()}'?\n\n"
+                "This updates the selected canopy layer schema and keeps existing features."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        result = repair_canopy_schema(layer)
+        if result.ok and result.added_fields:
+            self.statusSummaryLabel.setText(f"Added {len(result.added_fields)} canopy field(s).")
+            self.statusTextEdit.setPlainText(", ".join(result.added_fields))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy metadata fields added.", Qgis.Success)
+        elif result.ok:
+            self.statusSummaryLabel.setText("Canopy metadata fields already exist.")
+            self.statusTextEdit.clear()
+            self.statusTextEdit.setVisible(False)
+            self._push_message("Canopy schema already looks ready.", Qgis.Info)
+        else:
+            self.statusSummaryLabel.setText("Could not update canopy schema.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy schema update failed.", Qgis.Warning)
+
+    def _mark_selected_canopies(self, status):
+        result = mark_selected_canopies(
+            self._current_layer(self.targetLayerComboBox),
+            status,
+            note=self.canopyReviewNoteLineEdit.text(),
+        )
+        if result.ok:
+            self.statusSummaryLabel.setText(
+                f"Marked {result.updated_count} selected canopy/canopies as {status}."
+            )
+            self.statusTextEdit.setPlainText("\n".join(result.warnings))
+            self.statusTextEdit.setVisible(bool(result.warnings))
+            self.canopyReviewNoteLineEdit.clear()
+            self._push_message("Canopy review status updated.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Could not update canopy review status.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors + result.warnings))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy review update failed.", Qgis.Warning)
+
+    def _summarize_canopy_reviews(self):
+        layer = self._current_layer(self.targetLayerComboBox)
+        try:
+            summary = summarize_canopy_layer_reviews(layer)
+            insight_lines = canopy_layer_quality_insight_lines(layer)
+        except ValueError as exc:
+            self.statusSummaryLabel.setText("Could not summarize canopy reviews.")
+            self.statusTextEdit.setPlainText(str(exc))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy review summary failed.", Qgis.Warning)
+            return
+
+        lines = format_canopy_review_summary(summary)
+        self.statusSummaryLabel.setText("Canopy review summary updated.")
+        self.statusTextEdit.setPlainText("\n".join(lines + ("",) + tuple(insight_lines)))
+        self.statusTextEdit.setVisible(True)
+        self._push_message("Canopy review summary updated.", Qgis.Info)
+
+    def _use_best_canopy_tool(self):
+        try:
+            recommendation = best_canopy_layer_recommendation(
+                self._current_layer(self.targetLayerComboBox)
+            )
+        except ValueError as exc:
+            self.statusSummaryLabel.setText("Could not find a reviewed canopy tool setting.")
+            self.statusTextEdit.setPlainText(str(exc))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy recommendation failed.", Qgis.Warning)
+            return
+
+        if recommendation is None:
+            self.statusSummaryLabel.setText("No reviewed canopy tool setting is ready yet.")
+            self.statusTextEdit.setPlainText(
+                "Review at least 3 canopies with the same mode and tightness before using a best tool setting."
+            )
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy recommendation needs more reviewed examples.", Qgis.Info)
+            return
+
+        accepted_pct = round(recommendation.accepted_rate * 100.0, 1)
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Use Best Canopy Tool",
+            (
+                "Apply this reviewed canopy setting to the Label Canopy controls?\n\n"
+                f"{recommendation.canopy_mode}, tightness {recommendation.crown_tightness}\n"
+                f"{accepted_pct}% accepted across {recommendation.reviewed_total} reviewed canopies."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.Yes,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        mode_index = self.canopyModeComboBox.findText(recommendation.canopy_mode)
+        if mode_index != -1:
+            self.canopyModeComboBox.setCurrentIndex(mode_index)
+        if recommendation.crown_tightness is not None:
+            self.crownTightnessSpinBox.setValue(recommendation.crown_tightness)
+        self.statusSummaryLabel.setText("Best reviewed canopy tool setting applied.")
+        self.statusTextEdit.setPlainText(
+            f"{recommendation.canopy_mode}, tightness {recommendation.crown_tightness}"
+        )
+        self.statusTextEdit.setVisible(True)
+        self._push_message("Best reviewed canopy tool setting applied.", Qgis.Success)
 
     def _request_training_polygon(self):
         training_square_index = self.workflowComboBox.findData(WORKFLOW_CREATE_TRAINING_SQUARE)
