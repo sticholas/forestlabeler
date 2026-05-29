@@ -251,3 +251,8 @@ Twenty-fifth migration slice:
 
 - The dock now has a product-style QSS layer with cleaner cards, compact controls, primary/secondary action buttons, and clearer status panels.
 - Workflow controls were lightly renamed from activation language to start-language for a more end-user friendly feel.
+
+Twenty-sixth migration slice:
+
+- Training Shape now uses a compact primary path by default and hides angle/custom side-length controls behind an Advanced options toggle.
+- Validation details collapse unless warnings/errors are present, keeping the dock smaller during normal use.

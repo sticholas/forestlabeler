@@ -74,11 +74,13 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.validateProjectButton.clicked.connect(self.validate_project)
         self.activateLabelingButton.clicked.connect(self._request_labeling)
         self.activateTrainingShapeButton.clicked.connect(self._request_training_shape)
+        self.trainingAdvancedCheckBox.toggled.connect(self._update_training_advanced_controls)
         self.squareSegmentLengthSpinBox.valueChanged.connect(self._update_training_square_summary)
         self.squareVertexCountSpinBox.valueChanged.connect(self._update_training_square_summary)
         self.squareAngleSpinBox.valueChanged.connect(self._update_training_square_summary)
         self.squareCustomSideLengthsLineEdit.textChanged.connect(self._update_training_square_summary)
         self._update_training_square_summary()
+        self._update_training_advanced_controls()
         self.refresh_layers()
 
     def closeEvent(self, event):
@@ -113,6 +115,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         )
         self.statusSummaryLabel.setText("Project not validated.")
         self.statusTextEdit.clear()
+        self.statusTextEdit.setVisible(False)
 
     def validate_project(self):
         """Validate selected layers and report whether labeling can start."""
@@ -136,14 +139,13 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         if result.ok:
             self.statusSummaryLabel.setText("Validation passed for selected workflow.")
-            if not lines:
-                lines.append("No validation issues found.")
             self._push_message("Forest Labeler validation passed.", Qgis.Success)
         else:
             self.statusSummaryLabel.setText("Validation failed. Fix project setup before labeling.")
             self._push_message("Forest Labeler validation failed.", Qgis.Warning)
 
         self.statusTextEdit.setPlainText("\n".join(lines))
+        self.statusTextEdit.setVisible(bool(lines))
 
         return result
 
@@ -156,7 +158,9 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.workflowDescriptionLabel.setProperty("tone", "muted")
         self.trainingSquareSummaryLabel.setProperty("tone", "hint")
         self.statusSummaryLabel.setProperty("tone", "status")
-        self.statusTextEdit.setMinimumHeight(112)
+        self.statusTextEdit.setMinimumHeight(72)
+        self.statusTextEdit.setMaximumHeight(120)
+        self.statusTextEdit.setVisible(False)
         self.setStyleSheet(
             """
             QWidget#dockWidgetContents {
@@ -169,7 +173,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 border: 1px solid #d8e2dd;
                 border-radius: 8px;
                 margin-top: 14px;
-                padding: 14px 10px 10px 10px;
+                padding: 12px 9px 9px 9px;
                 font-weight: 600;
                 color: #18362d;
             }
@@ -220,9 +224,14 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             }
             QPushButton {
                 border-radius: 7px;
-                padding: 7px 10px;
+                padding: 6px 10px;
                 font-weight: 600;
-                min-height: 24px;
+                min-height: 22px;
+            }
+            QCheckBox {
+                color: #315d4c;
+                font-weight: 600;
+                spacing: 7px;
             }
             QPushButton[buttonRole="primary"] {
                 background: #245f49;
@@ -351,6 +360,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         except ValueError as exc:
             self.statusSummaryLabel.setText("Training shape settings need attention.")
             self.statusTextEdit.setPlainText(str(exc))
+            self.statusTextEdit.setVisible(True)
             self._push_message("Training shape settings need attention.", Qgis.Warning)
             return
 
@@ -379,6 +389,14 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.trainingSquareGroupBox.setVisible(is_square)
         if is_square:
             self._update_training_square_summary()
+            self._update_training_advanced_controls()
+
+    def _update_training_advanced_controls(self):
+        show_advanced = self.trainingAdvancedCheckBox.isChecked()
+        self.squareAngleLabel.setVisible(show_advanced)
+        self.squareAngleSpinBox.setVisible(show_advanced)
+        self.squareCustomSideLengthsLabel.setVisible(show_advanced)
+        self.squareCustomSideLengthsLineEdit.setVisible(show_advanced)
 
     def _update_training_square_summary(self):
         try:
