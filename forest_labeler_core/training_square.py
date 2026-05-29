@@ -1,71 +1,70 @@
-"""Training square geometry helpers."""
+"""Training shape geometry helpers."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 import math
 
-from .geometry_math import xy
+from .geometry_math import distance_xy, xy
 
 
 @dataclass(frozen=True)
-class TrainingSquareParameters:
-    segment_length_m: float = 10.0
-    nodes_per_side: int = 11
+class TrainingShapeParameters:
+    segment_length_m: float = 100.0
+    vertex_count: int = 4
     angle_deg: float = 0.0
 
     @property
-    def side_length_m(self):
-        return self.segment_length_m * max(1, self.nodes_per_side - 1)
+    def shape_name(self):
+        names = {
+            3: "triangle",
+            4: "square",
+            5: "pentagon",
+            6: "hexagon",
+            7: "heptagon",
+            8: "octagon",
+        }
+        return names.get(self.vertex_count, f"{self.vertex_count}-gon")
+
+    @property
+    def circumradius_m(self):
+        return self.segment_length_m / (2.0 * math.sin(math.pi / self.vertex_count))
 
 
-def build_training_square_parameters(segment_length_m, nodes_per_side, angle_deg=0.0):
-    """Validate and normalize training square parameters."""
+def build_training_shape_parameters(segment_length_m, vertex_count, angle_deg=0.0):
+    """Validate and normalize training shape parameters."""
     segment_length = float(segment_length_m)
-    node_count = int(nodes_per_side)
+    vertices = int(vertex_count)
     if segment_length <= 0:
         raise ValueError("segment length must be greater than zero")
-    if node_count < 2:
-        raise ValueError("nodes per side must be at least 2")
-    return TrainingSquareParameters(
+    if vertices < 3:
+        raise ValueError("vertex count must be at least 3")
+    return TrainingShapeParameters(
         segment_length_m=segment_length,
-        nodes_per_side=node_count,
+        vertex_count=vertices,
         angle_deg=float(angle_deg) % 360.0,
     )
 
 
-def square_ring_points(center, params):
-    """Return closed rotated square ring points for training-square creation."""
+def training_shape_ring_points(center, params):
+    """Return closed regular-polygon ring points for a training shape."""
     center_x, center_y = xy(center)
-    half_size = params.side_length_m / 2.0
-    local_corners = [
-        (-half_size, -half_size),
-        (half_size, -half_size),
-        (half_size, half_size),
-        (-half_size, half_size),
-        (-half_size, -half_size),
-    ]
-    return [_rotate_offset(center_x, center_y, dx, dy, params.angle_deg) for dx, dy in local_corners]
+    start_angle = math.radians(params.angle_deg) - math.pi / 2.0
+    radius = params.circumradius_m
+    points = []
+    for index in range(params.vertex_count):
+        angle = start_angle + (2.0 * math.pi * index) / params.vertex_count
+        points.append((center_x + radius * math.cos(angle), center_y + radius * math.sin(angle)))
+    points.append(points[0])
+    return points
 
 
-def square_grid_nodes(center, params):
-    """Return rotated grid node points inside the square, row-major."""
-    center_x, center_y = xy(center)
-    half_size = params.side_length_m / 2.0
-    nodes = []
-    for row in range(params.nodes_per_side):
-        dy = -half_size + row * params.segment_length_m
-        for col in range(params.nodes_per_side):
-            dx = -half_size + col * params.segment_length_m
-            nodes.append(_rotate_offset(center_x, center_y, dx, dy, params.angle_deg))
-    return nodes
+def side_lengths(points):
+    """Return side lengths for a closed polygon ring."""
+    return [distance_xy(points[index], points[index + 1]) for index in range(len(points) - 1)]
 
 
-def _rotate_offset(center_x, center_y, dx, dy, angle_deg):
-    angle = math.radians(angle_deg)
-    cos_angle = math.cos(angle)
-    sin_angle = math.sin(angle)
-    return (
-        center_x + dx * cos_angle - dy * sin_angle,
-        center_y + dx * sin_angle + dy * cos_angle,
-    )
+# Backwards-compatible names from the first Track B migration slice.
+TrainingSquareParameters = TrainingShapeParameters
+build_training_square_parameters = build_training_shape_parameters
+square_ring_points = training_shape_ring_points

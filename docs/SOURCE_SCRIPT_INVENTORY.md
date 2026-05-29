@@ -220,6 +220,12 @@ Nineteenth migration slice:
 
 Twentieth migration slice:
 
-- `forest_labeler_core/training_square.py` starts the `NewTrainingSquare.py` migration with tested, QGIS-free square/grid parameter logic.
+- `forest_labeler_core/training_square.py` starts the `NewTrainingSquare.py` migration with tested, QGIS-free training shape parameter logic.
 - The dock now shows workflow-specific controls so Label Canopy and Create Training Square no longer share one layer contract.
 - Create Training Square now has a target square layer, segment length, nodes per side, and angle controls; 10 m segments with 11 nodes preserves the existing 100 m default.
+
+Twenty-first migration slice:
+
+- Training Square controls now treat nodes as polygon vertices/sides: 3 creates a triangle, 4 a square, 6 a hexagon, and higher counts create regular n-gons.
+- Added `forest_labeler_qgis/training_shape_map_tool.py` so the workflow has an activation button, live preview, and click-to-stamp behavior.
+- Segment length now means side length, so the default 4 vertices with 100 m segments creates the existing 100 m square behavior.

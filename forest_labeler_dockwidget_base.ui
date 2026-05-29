@@ -155,9 +155,9 @@
           <widget class="QComboBox" name="squareTargetLayerComboBox"/>
          </item>
          <item row="1" column="0">
-          <widget class="QLabel" name="squareSegmentLengthLabel">
+         <widget class="QLabel" name="squareSegmentLengthLabel">
            <property name="text">
-            <string>Segment length (m)</string>
+            <string>Side length (m)</string>
            </property>
           </widget>
          </item>
@@ -175,22 +175,22 @@
           </widget>
          </item>
          <item row="2" column="0">
-          <widget class="QLabel" name="squareNodesPerSideLabel">
+          <widget class="QLabel" name="squareVertexCountLabel">
            <property name="text">
-            <string>Nodes per side</string>
+            <string>Vertices</string>
            </property>
           </widget>
          </item>
          <item row="2" column="1">
-          <widget class="QSpinBox" name="squareNodesPerSideSpinBox">
+          <widget class="QSpinBox" name="squareVertexCountSpinBox">
            <property name="minimum">
-            <number>2</number>
+            <number>3</number>
            </property>
            <property name="maximum">
-            <number>1001</number>
+            <number>64</number>
            </property>
            <property name="value">
-            <number>11</number>
+            <number>4</number>
            </property>
           </widget>
          </item>
@@ -217,9 +217,16 @@
         </layout>
        </item>
        <item>
+        <widget class="QPushButton" name="activateTrainingShapeButton">
+         <property name="text">
+          <string>Activate Training Shape</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QLabel" name="trainingSquareSummaryLabel">
          <property name="text">
-          <string>Default creates a 100 m square.</string>
+          <string>Default creates a square with 100 m sides.</string>
          </property>
          <property name="wordWrap">
           <bool>true</bool>

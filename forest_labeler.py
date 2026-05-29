@@ -30,6 +30,10 @@ from .resources import *
 # Import the code for the DockWidget
 from .forest_labeler_dockwidget import forestlabelerDockWidget
 from .forest_labeler_qgis.canopy_map_tool import CanopyLabelMapTool, CanopyMapToolSettings
+from .forest_labeler_qgis.training_shape_map_tool import (
+    TrainingShapeMapTool,
+    TrainingShapeMapToolSettings,
+)
 import os.path
 
 
@@ -74,6 +78,7 @@ class forestlabeler:
         self.pluginIsActive = False
         self.dockwidget = None
         self.canopy_map_tool = None
+        self.training_shape_map_tool = None
 
 
     # noinspection PyMethodMayBeStatic
@@ -186,6 +191,7 @@ class forestlabeler:
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
         self.dockwidget.activateLabelingRequested.disconnect(self.activate_label_canopy_tool)
+        self.dockwidget.activateTrainingShapeRequested.disconnect(self.activate_training_shape_tool)
 
         # remove this statement if dockwidget is to remain
         # for reuse if plugin is reopened
@@ -213,6 +219,23 @@ class forestlabeler:
             ),
         )
         self.iface.mapCanvas().setMapTool(self.canopy_map_tool)
+
+    def activate_training_shape_tool(self):
+        """Activate the Track B training shape stamp map tool."""
+        if self.dockwidget is None:
+            return
+
+        settings = self.dockwidget.training_square_settings()
+        self.training_shape_map_tool = TrainingShapeMapTool(
+            self.iface,
+            TrainingShapeMapToolSettings(
+                target_layer=self.dockwidget.selected_training_square_layer(),
+                segment_length_m=settings["segment_length_m"],
+                vertex_count=settings["vertex_count"],
+                angle_deg=settings["angle_deg"],
+            ),
+        )
+        self.iface.mapCanvas().setMapTool(self.training_shape_map_tool)
 
 
     def unload(self):
@@ -248,6 +271,7 @@ class forestlabeler:
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
             self.dockwidget.activateLabelingRequested.connect(self.activate_label_canopy_tool)
+            self.dockwidget.activateTrainingShapeRequested.connect(self.activate_training_shape_tool)
 
             # show the dockwidget
             # TODO: fix to allow choice of dock location

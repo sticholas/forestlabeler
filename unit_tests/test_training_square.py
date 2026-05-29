@@ -1,38 +1,44 @@
 import unittest
 
 from forest_labeler_core.training_square import (
-    build_training_square_parameters,
-    square_grid_nodes,
-    square_ring_points,
+    build_training_shape_parameters,
+    side_lengths,
+    training_shape_ring_points,
 )
 
 
-class TrainingSquareTest(unittest.TestCase):
-    def test_default_grid_matches_100_meter_square(self):
-        params = build_training_square_parameters(segment_length_m=10, nodes_per_side=11)
+class TrainingShapeTest(unittest.TestCase):
+    def test_four_vertices_create_square_with_requested_side_length(self):
+        params = build_training_shape_parameters(segment_length_m=100, vertex_count=4)
+        points = training_shape_ring_points((0, 0), params)
 
-        self.assertEqual(params.side_length_m, 100.0)
-        self.assertEqual(len(square_ring_points((0, 0), params)), 5)
-        self.assertEqual(len(square_grid_nodes((0, 0), params)), 121)
+        self.assertEqual(params.shape_name, "square")
+        self.assertEqual(len(points), 5)
+        for length in side_lengths(points):
+            self.assertAlmostEqual(length, 100.0)
 
-    def test_supports_arbitrary_segment_length_and_node_count(self):
-        params = build_training_square_parameters(segment_length_m=25, nodes_per_side=5)
+    def test_three_vertices_create_triangle(self):
+        params = build_training_shape_parameters(segment_length_m=25, vertex_count=3)
+        points = training_shape_ring_points((0, 0), params)
 
-        self.assertEqual(params.side_length_m, 100.0)
-        self.assertEqual(square_ring_points((0, 0), params)[0], (-50.0, -50.0))
+        self.assertEqual(params.shape_name, "triangle")
+        self.assertEqual(len(points), 4)
+        self.assertEqual(len(points[:-1]), 3)
 
-    def test_rotates_square_points(self):
-        params = build_training_square_parameters(segment_length_m=10, nodes_per_side=2, angle_deg=90)
-        points = square_ring_points((0, 0), params)
+    def test_six_vertices_create_hexagon(self):
+        params = build_training_shape_parameters(segment_length_m=10, vertex_count=6)
+        points = training_shape_ring_points((0, 0), params)
 
-        self.assertAlmostEqual(points[0][0], 5.0)
-        self.assertAlmostEqual(points[0][1], -5.0)
+        self.assertEqual(params.shape_name, "hexagon")
+        self.assertEqual(len(points), 7)
+        for length in side_lengths(points):
+            self.assertAlmostEqual(length, 10.0)
 
     def test_rejects_invalid_parameters(self):
         with self.assertRaises(ValueError):
-            build_training_square_parameters(segment_length_m=0, nodes_per_side=11)
+            build_training_shape_parameters(segment_length_m=0, vertex_count=4)
         with self.assertRaises(ValueError):
-            build_training_square_parameters(segment_length_m=10, nodes_per_side=1)
+            build_training_shape_parameters(segment_length_m=10, vertex_count=2)
 
 
 if __name__ == "__main__":

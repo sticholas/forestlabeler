@@ -35,7 +35,7 @@ from .forest_labeler_core.config import (
     TARGET_LAYER_NAME,
 )
 from .forest_labeler_core.layer_validation import validate_workflow_layers
-from .forest_labeler_core.training_square import build_training_square_parameters
+from .forest_labeler_core.training_square import build_training_shape_parameters
 from .forest_labeler_core.workflows import (
     WORKFLOW_CREATE_TRAINING_SQUARE,
     WORKFLOW_LABEL_CANOPY,
@@ -50,6 +50,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
     activateLabelingRequested = pyqtSignal()
+    activateTrainingShapeRequested = pyqtSignal()
 
     def __init__(self, iface=None, parent=None):
         """Constructor."""
@@ -67,8 +68,9 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.refreshLayersButton.clicked.connect(self.refresh_layers)
         self.validateProjectButton.clicked.connect(self.validate_project)
         self.activateLabelingButton.clicked.connect(self._request_labeling)
+        self.activateTrainingShapeButton.clicked.connect(self._request_training_shape)
         self.squareSegmentLengthSpinBox.valueChanged.connect(self._update_training_square_summary)
-        self.squareNodesPerSideSpinBox.valueChanged.connect(self._update_training_square_summary)
+        self.squareVertexCountSpinBox.valueChanged.connect(self._update_training_square_summary)
         self.squareAngleSpinBox.valueChanged.connect(self._update_training_square_summary)
         self._update_training_square_summary()
         self.refresh_layers()
@@ -156,15 +158,15 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         }
 
     def training_square_settings(self):
-        params = build_training_square_parameters(
+        params = build_training_shape_parameters(
             self.squareSegmentLengthSpinBox.value(),
-            self.squareNodesPerSideSpinBox.value(),
+            self.squareVertexCountSpinBox.value(),
             self.squareAngleSpinBox.value(),
         )
         return {
             "segment_length_m": params.segment_length_m,
-            "nodes_per_side": params.nodes_per_side,
-            "side_length_m": params.side_length_m,
+            "vertex_count": params.vertex_count,
+            "shape_name": params.shape_name,
             "angle_deg": params.angle_deg,
         }
 
@@ -226,6 +228,17 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.activateLabelingRequested.emit()
 
+    def _request_training_shape(self):
+        training_square_index = self.workflowComboBox.findData(WORKFLOW_CREATE_TRAINING_SQUARE)
+        if training_square_index != -1:
+            self.workflowComboBox.setCurrentIndex(training_square_index)
+
+        result = self.validate_project()
+        if not result.ok:
+            return
+
+        self.activateTrainingShapeRequested.emit()
+
     def _target_layer_for_workflow(self, workflow_key):
         if workflow_key == WORKFLOW_CREATE_TRAINING_SQUARE:
             return self._current_layer(self.squareTargetLayerComboBox)
@@ -249,9 +262,9 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def _update_training_square_summary(self):
         settings = self.training_square_settings()
         self.trainingSquareSummaryLabel.setText(
-            "Creates a {side:.2f} m square from {nodes} nodes per side at {segment:.2f} m spacing.".format(
-                side=settings["side_length_m"],
-                nodes=settings["nodes_per_side"],
+            "Creates a {shape} with {nodes} vertices and {segment:.2f} m side lengths.".format(
+                shape=settings["shape_name"],
+                nodes=settings["vertex_count"],
                 segment=settings["segment_length_m"],
             )
         )
