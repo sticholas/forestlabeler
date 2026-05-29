@@ -8,7 +8,8 @@ echo "== Python syntax =="
 python3 -m py_compile \
   forest_labeler.py \
   forest_labeler_dockwidget.py \
-  forest_labeler_core/*.py
+  forest_labeler_core/*.py \
+  forest_labeler_qgis/*.py
 
 echo "== Unit tests =="
 python3 -m unittest discover -s unit_tests

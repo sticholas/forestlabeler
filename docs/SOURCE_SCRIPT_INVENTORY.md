@@ -137,3 +137,8 @@ Fourth migration slice:
 - `forest_labeler_core/canopy_attributes.py` extracts canopy feature attribute planning before QGIS writes occur.
 - `forest_labeler_core/species.py` extracts species assignment decisions before geometry/layer adapters are wired.
 - `unit_tests/test_canopy_attributes.py` and `unit_tests/test_species.py` cover metadata planning, fid selection, missing species, single species, and multiple-species blocking behavior.
+
+Fifth migration slice:
+
+- `forest_labeler_qgis/feature_writer.py` adds the first controlled QGIS adapter for applying canopy feature writes.
+- The adapter consumes pure core plans and returns structured success, warning, and error results instead of writing silently from a map tool.
