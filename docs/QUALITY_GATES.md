@@ -62,6 +62,7 @@ Manual QGIS checks should record:
 - Configuration is explicit and reviewable.
 - Pure helper tests can run outside QGIS.
 - `bash scripts/checks.sh` passes before pushing.
+- Each workflow is labeled as production-target or experimental before UI wiring.
 
 ## Release Checklist
 

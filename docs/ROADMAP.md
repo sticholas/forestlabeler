@@ -65,6 +65,9 @@ Goal: move prototype logic into maintainable modules.
 - Create config/preset objects for dense, sparse, and mixed canopy modes.
 - Separate raster sampling, geometry creation, species lookup, and metadata filling.
 - Add unit tests for pure helper functions.
+- Keep `CanopyCrownLabeler.py` as the first production target.
+- Keep `NewTrainingSquare.py` as the second production target.
+- Track `PolygonsWithinSquare3.py` and `ApexDetector.py` as experimental until stronger QA exists.
 
 Exit criteria:
 
@@ -84,6 +87,7 @@ Needs more work if:
 - Business rules remain hidden in global constants.
 - Layer writes happen without validation or edit-session control.
 - Dense, mixed, sparse, and tightness behavior cannot be explained from code or docs.
+- The plugin UI does not make it clear which workflow mode the user is using.
 
 ## Phase 3: Interactive QGIS Tool
 

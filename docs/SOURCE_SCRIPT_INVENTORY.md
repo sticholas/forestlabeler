@@ -18,6 +18,13 @@ prototypes/canopies_workflow/
 
 ## Workflow Scripts
 
+Current maturity:
+
+- `CanopyCrownLabeler.py`: strongest current canopy workflow and first production priority.
+- `NewTrainingSquare.py`: strong working square workflow and second production priority.
+- `PolygonsWithinSquare3.py`: mid-level prototype; useful but needs more QA before production.
+- `ApexDetector.py`: mid-level prototype; should stay experimental until quality metrics improve.
+
 ### `NewTrainingSquare.py`
 
 Creates 100 m training squares and enriches them from supporting vegetation and land-cover layers.
@@ -119,3 +126,8 @@ Second migration slice:
 
 - `forest_labeler_core/numeric.py` extracts median, Gaussian kernel, circular Gaussian smoothing, and circular moving average helpers.
 - `unit_tests/test_numeric.py` covers edge wrapping, normalization, invalid parameters, empty inputs, and zero-pass behavior.
+
+Third migration slice:
+
+- `forest_labeler_core/raster_sources.py` extracts probable-ortho source classification without QGIS imports.
+- `unit_tests/test_raster_sources.py` covers local ortho acceptance, CHM/landcover exclusion, web/tile rejection, provider filtering, and extension filtering.
