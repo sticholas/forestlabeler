@@ -16,6 +16,7 @@ from .crown_preview_service import (
     CrownPreviewRequest,
     build_crown_preview_geometry,
 )
+from .geometry_adapter import circle_geometry
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,7 @@ class CanopyLabelMapTool(QgsMapTool):
         self.current_radius_m = 0.0
         self.current_geometry = None
         self.current_build_result = None
+        self.preview_is_refined = False
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.grow_circle)
@@ -92,7 +94,7 @@ class CanopyLabelMapTool(QgsMapTool):
         self.center_project = self.toMapCoordinates(event.pos())
         self.current_radius_m = self.params.start_radius_m
         self.is_holding = True
-        self.refresh_preview()
+        self.refresh_seed_preview()
         self.timer.start(self.params.timer_interval_ms)
 
     def canvasMoveEvent(self, event):
@@ -103,7 +105,7 @@ class CanopyLabelMapTool(QgsMapTool):
         drag_radius = self.center_project.distance(mouse_project)
         if drag_radius > self.current_radius_m:
             self.current_radius_m = min(drag_radius, self.params.max_radius_m)
-            self.refresh_preview()
+            self.refresh_seed_preview()
 
     def canvasReleaseEvent(self, event):
         if event.button() != Qt.MouseButton.LeftButton:
@@ -112,7 +114,7 @@ class CanopyLabelMapTool(QgsMapTool):
             return
 
         self.timer.stop()
-        self.refresh_preview()
+        self.build_refined_preview()
 
         if self.current_geometry is None or self.current_geometry.isEmpty():
             QMessageBox.warning(None, "No crown geometry", "Could not build a canopy polygon at this location.")
@@ -144,6 +146,11 @@ class CanopyLabelMapTool(QgsMapTool):
                     "Forest Labeler",
                     " ".join(creation.warnings),
                 )
+            if build_result is not None and build_result.refined:
+                self.iface.messageBar().pushInfo(
+                    "Forest Labeler",
+                    "Crown snapped to the local canopy apex and refined from CHM structure.",
+                )
         else:
             QMessageBox.warning(None, "Canopy not added", "\n".join(creation.errors))
 
@@ -157,9 +164,35 @@ class CanopyLabelMapTool(QgsMapTool):
             self.current_radius_m + self.params.growth_per_tick_m,
             self.params.max_radius_m,
         )
-        self.refresh_preview()
+        self.refresh_seed_preview()
 
-    def refresh_preview(self):
+    def refresh_seed_preview(self):
+        """Show stable press-hold sizing feedback without running crown inference."""
+        if self.center_project is None:
+            return
+
+        center_target = self._transform_point(
+            self.center_project,
+            self.canvas.mapSettings().destinationCrs(),
+            self.settings.target_layer.crs(),
+        )
+        geometry = circle_geometry(
+            (center_target.x(), center_target.y()),
+            self.current_radius_m,
+            segments=72,
+        )
+        if geometry is None:
+            self.preview_band.hide()
+            return
+
+        self.current_geometry = geometry
+        self.current_build_result = None
+        self.preview_is_refined = False
+        self.preview_band.setToGeometry(QgsGeometry(geometry), self.settings.target_layer)
+        self.preview_band.show()
+
+    def build_refined_preview(self):
+        """Run canopy inference once at release so the final crown can snap to tree structure."""
         if self.center_project is None:
             return
 
@@ -182,11 +215,13 @@ class CanopyLabelMapTool(QgsMapTool):
         if result.ok:
             self.current_geometry = result.geometry
             self.current_build_result = result.build_result
+            self.preview_is_refined = True
             self.preview_band.setToGeometry(QgsGeometry(result.geometry), self.settings.target_layer)
             self.preview_band.show()
         else:
             self.current_geometry = None
             self.current_build_result = None
+            self.preview_is_refined = False
             self.preview_band.hide()
 
     def stop_hold(self):
@@ -196,6 +231,7 @@ class CanopyLabelMapTool(QgsMapTool):
         self.current_radius_m = 0.0
         self.current_geometry = None
         self.current_build_result = None
+        self.preview_is_refined = False
 
     def _transform_point(self, point, source_crs, target_crs):
         if source_crs == target_crs:

@@ -212,3 +212,8 @@ Eighteenth migration slice:
 - `forest_labeler_qgis/canopy_map_tool.py` adds the first interactive Label Canopy map tool.
 - The dock now exposes canopy mode, crown tightness, and an activation control that validates layers before enabling the map tool.
 - The map tool previews generated crown geometry while the user clicks or press-holds, then writes accepted geometry through `forest_labeler_qgis/canopy_service.py`.
+
+Nineteenth migration slice:
+
+- Press-hold interaction now shows a stable seed-radius circle during sizing.
+- Crown inference runs once on release, allowing the final polygon to snap/refine to the local canopy apex without jittering while the user is holding the mouse.
