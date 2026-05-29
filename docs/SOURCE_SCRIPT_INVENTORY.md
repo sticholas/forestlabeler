@@ -240,3 +240,9 @@ Twenty-third migration slice:
 - `forest_labeler_core/training_shape_attributes.py` adds tested metadata planning for stamped training shapes.
 - Training Shape writes optional `fid`, side length, vertex count, shape name, angle, area, and ortho source fields when present.
 - `forest_labeler_qgis/training_shape_map_tool.py` now uses the shared feature-writing path instead of setting attributes directly.
+
+Twenty-fourth migration slice:
+
+- Training Shape now supports exact custom side lengths for valid polygons, including rectangles such as `100, 20, 100, 20` and triangles with three differing side lengths.
+- Blank custom side lengths preserve the simple equal-side workflow.
+- The dock summarizes custom side lengths and reports validation errors before activation.

@@ -25,6 +25,7 @@ class TrainingShapeMapToolSettings:
     segment_length_m: float
     vertex_count: int
     angle_deg: float
+    side_lengths_m: tuple = ()
 
 
 class TrainingShapeMapTool(QgsMapTool):
@@ -41,6 +42,7 @@ class TrainingShapeMapTool(QgsMapTool):
             settings.segment_length_m,
             settings.vertex_count,
             settings.angle_deg,
+            side_lengths=settings.side_lengths_m,
         )
         self.project_crs = self.canvas.mapSettings().destinationCrs()
         self.current_center_project = None
@@ -138,6 +140,7 @@ class TrainingShapeMapTool(QgsMapTool):
             self.params.segment_length_m,
             self.params.vertex_count,
             self.params.angle_deg + delta_degrees,
+            side_lengths=self.params.side_lengths_m,
         )
         self.refresh_preview()
         self.iface.messageBar().pushInfo(

@@ -233,6 +233,7 @@ class forestlabeler:
                 segment_length_m=settings["segment_length_m"],
                 vertex_count=settings["vertex_count"],
                 angle_deg=settings["angle_deg"],
+                side_lengths_m=settings["side_lengths_m"],
             ),
         )
         self.iface.mapCanvas().setMapTool(self.training_shape_map_tool)

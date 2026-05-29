@@ -35,7 +35,11 @@ from .forest_labeler_core.config import (
     TARGET_LAYER_NAME,
 )
 from .forest_labeler_core.layer_validation import validate_workflow_layers
-from .forest_labeler_core.training_square import build_training_shape_parameters
+from .forest_labeler_core.training_square import (
+    build_training_shape_parameters,
+    parse_side_lengths_text,
+    side_lengths_label,
+)
 from .forest_labeler_core.workflows import (
     WORKFLOW_CREATE_TRAINING_SQUARE,
     WORKFLOW_LABEL_CANOPY,
@@ -72,6 +76,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.squareSegmentLengthSpinBox.valueChanged.connect(self._update_training_square_summary)
         self.squareVertexCountSpinBox.valueChanged.connect(self._update_training_square_summary)
         self.squareAngleSpinBox.valueChanged.connect(self._update_training_square_summary)
+        self.squareCustomSideLengthsLineEdit.textChanged.connect(self._update_training_square_summary)
         self._update_training_square_summary()
         self.refresh_layers()
 
@@ -162,12 +167,16 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self.squareSegmentLengthSpinBox.value(),
             self.squareVertexCountSpinBox.value(),
             self.squareAngleSpinBox.value(),
+            side_lengths=parse_side_lengths_text(self.squareCustomSideLengthsLineEdit.text()),
         )
         return {
             "segment_length_m": params.segment_length_m,
             "vertex_count": params.vertex_count,
             "shape_name": params.shape_name,
             "angle_deg": params.angle_deg,
+            "side_lengths_m": params.side_lengths_m,
+            "uses_custom_lengths": params.uses_custom_lengths,
+            "side_lengths_label": side_lengths_label(params),
         }
 
     def _populate_workflows(self):
@@ -233,6 +242,14 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if training_square_index != -1:
             self.workflowComboBox.setCurrentIndex(training_square_index)
 
+        try:
+            self.training_square_settings()
+        except ValueError as exc:
+            self.statusSummaryLabel.setText("Training shape settings need attention.")
+            self.statusTextEdit.setPlainText(str(exc))
+            self._push_message("Training shape settings need attention.", Qgis.Warning)
+            return
+
         result = self.validate_project()
         if not result.ok:
             return
@@ -260,14 +277,27 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self._update_training_square_summary()
 
     def _update_training_square_summary(self):
-        settings = self.training_square_settings()
-        self.trainingSquareSummaryLabel.setText(
-            "Creates a {shape} with {nodes} vertices and {segment:.2f} m side lengths.".format(
-                shape=settings["shape_name"],
-                nodes=settings["vertex_count"],
-                segment=settings["segment_length_m"],
+        try:
+            settings = self.training_square_settings()
+            if settings["uses_custom_lengths"]:
+                text = "Creates a {shape} with side lengths: {lengths} m.".format(
+                    shape=settings["shape_name"],
+                    lengths=settings["side_lengths_label"],
+                )
+            else:
+                text = "Creates a {shape} with {nodes} vertices and {segment:.2f} m side lengths.".format(
+                    shape=settings["shape_name"],
+                    nodes=settings["vertex_count"],
+                    segment=settings["segment_length_m"],
+                )
+            self.trainingSquareSummaryLabel.setText(text)
+        except ValueError as exc:
+            self.trainingSquareSummaryLabel.setText(
+                "Custom side lengths need {nodes} valid lengths: {message}.".format(
+                    nodes=self.squareVertexCountSpinBox.value(),
+                    message=str(exc),
+                )
             )
-        )
 
     def _populate_combo(self, combo, layers, preferred_name, allow_none):
         combo.blockSignals(True)

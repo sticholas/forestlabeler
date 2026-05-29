@@ -214,6 +214,20 @@
            </property>
           </widget>
          </item>
+         <item row="4" column="0">
+          <widget class="QLabel" name="squareCustomSideLengthsLabel">
+           <property name="text">
+            <string>Custom sides</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <widget class="QLineEdit" name="squareCustomSideLengthsLineEdit">
+           <property name="placeholderText">
+            <string>100, 20, 100, 20</string>
+           </property>
+          </widget>
+         </item>
         </layout>
        </item>
        <item>
