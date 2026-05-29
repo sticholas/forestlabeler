@@ -73,7 +73,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.refreshLayersButton.clicked.connect(self.refresh_layers)
         self.validateProjectButton.clicked.connect(self.validate_project)
         self.activateLabelingButton.clicked.connect(self._request_labeling)
-        self.activateTrainingShapeButton.clicked.connect(self._request_training_shape)
+        self.activateTrainingShapeButton.clicked.connect(self._request_training_polygon)
         self.trainingAdvancedCheckBox.toggled.connect(self._update_training_advanced_controls)
         self.squareSegmentLengthSpinBox.valueChanged.connect(self._update_training_square_summary)
         self.squareVertexCountSpinBox.valueChanged.connect(self._update_training_square_summary)
@@ -266,7 +266,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self._current_layer(self.speciesLayerComboBox),
         )
 
-    def selected_training_square_layer(self):
+    def selected_training_polygon_layer(self):
         return self._current_layer(self.squareTargetLayerComboBox)
 
     def canopy_settings(self):
@@ -275,7 +275,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             "crown_tightness": self.crownTightnessSpinBox.value(),
         }
 
-    def training_square_settings(self):
+    def training_polygon_settings(self):
         params = build_training_shape_parameters(
             self.squareSegmentLengthSpinBox.value(),
             self.squareVertexCountSpinBox.value(),
@@ -350,18 +350,18 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.activateLabelingRequested.emit()
 
-    def _request_training_shape(self):
+    def _request_training_polygon(self):
         training_square_index = self.workflowComboBox.findData(WORKFLOW_CREATE_TRAINING_SQUARE)
         if training_square_index != -1:
             self.workflowComboBox.setCurrentIndex(training_square_index)
 
         try:
-            self.training_square_settings()
+            self.training_polygon_settings()
         except ValueError as exc:
-            self.statusSummaryLabel.setText("Training shape settings need attention.")
+            self.statusSummaryLabel.setText("Training polygon settings need attention.")
             self.statusTextEdit.setPlainText(str(exc))
             self.statusTextEdit.setVisible(True)
-            self._push_message("Training shape settings need attention.", Qgis.Warning)
+            self._push_message("Training polygon settings need attention.", Qgis.Warning)
             return
 
         result = self.validate_project()
@@ -385,6 +385,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.targetLayerComboBox.setVisible(is_canopy)
         self.speciesLayerLabel.setVisible(is_canopy)
         self.speciesLayerComboBox.setVisible(is_canopy)
+        self.layersGroupBox.setVisible(is_canopy)
         self.labelCanopyGroupBox.setVisible(is_canopy)
         self.trainingSquareGroupBox.setVisible(is_square)
         if is_square:
@@ -400,7 +401,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def _update_training_square_summary(self):
         try:
-            settings = self.training_square_settings()
+            settings = self.training_polygon_settings()
             if settings["uses_custom_lengths"]:
                 text = "Creates a {shape} with side lengths: {lengths} m.".format(
                     shape=settings["shape_name"],

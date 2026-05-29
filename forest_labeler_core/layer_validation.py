@@ -42,10 +42,10 @@ def validate_workflow_layers(workflow_key, *, chm_layer=None, target_layer=None,
 
 
 def validate_training_square_layers(target_layer):
-    """Validate selected target layer for Training Square creation."""
+    """Validate selected target layer for Training Polygon creation."""
     errors = []
     warnings = []
-    _validate_polygon_target_layer(target_layer, errors, warnings, "target training square layer")
+    _validate_polygon_target_layer(target_layer, errors, warnings, "target training polygon layer")
     return ValidationResult(errors=errors, warnings=warnings)
 
 

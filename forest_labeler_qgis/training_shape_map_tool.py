@@ -1,4 +1,4 @@
-"""Interactive QGIS map tool for stamping training shapes."""
+"""Interactive QGIS map tool for stamping training polygons."""
 
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ class TrainingShapeMapTool(QgsMapTool):
         self.iface.messageBar().pushInfo(
             "Forest Labeler",
             (
-                f"Create Training Shape active: {self.params.shape_name}, "
+                f"Create Training Polygon active: {self.params.shape_name}, "
                 f"{self.params.segment_length_m:.2f} m sides. Move to preview, click to stamp."
             ),
         )
@@ -94,14 +94,14 @@ class TrainingShapeMapTool(QgsMapTool):
             QMessageBox.warning(
                 None,
                 "Layer not editable",
-                "Turn editing on for the target training shape polygon layer before stamping.",
+                "Turn editing on for the target training polygon layer before stamping.",
             )
             return
 
         center_project = self.toMapCoordinates(event.pos())
         geometry = self._geometry_for_project_center(center_project)
         if geometry is None or geometry.isEmpty():
-            QMessageBox.warning(None, "No shape geometry", "Could not build a training shape here.")
+            QMessageBox.warning(None, "No polygon geometry", "Could not build a training polygon here.")
             return
 
         write_result = add_training_shape_feature(
@@ -120,7 +120,7 @@ class TrainingShapeMapTool(QgsMapTool):
         self.canvas.refresh()
         self.iface.messageBar().pushSuccess(
             "Forest Labeler",
-            f"Training {self.params.shape_name} added.",
+            f"Training polygon added: {self.params.shape_name}.",
         )
         if write_result.warnings:
             self.iface.messageBar().pushWarning("Forest Labeler", " ".join(write_result.warnings))

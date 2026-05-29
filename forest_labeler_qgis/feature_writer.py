@@ -139,17 +139,17 @@ def add_training_shape_feature(
     ortho_id=None,
     require_editable=True,
 ):
-    """Add a training shape feature through a bounded write path."""
+    """Add a training polygon feature through a bounded write path."""
     errors = []
     warnings = []
 
     if target_layer is None:
-        errors.append("Target training shape layer is not selected.")
+        errors.append("Target training polygon layer is not selected.")
     elif require_editable and not target_layer.isEditable():
-        errors.append(f"'{target_layer.name()}' must be in edit mode before adding training shapes.")
+        errors.append(f"'{target_layer.name()}' must be in edit mode before adding training polygons.")
 
     if geometry is None or geometry.isEmpty():
-        errors.append("Training shape geometry is empty and cannot be written.")
+        errors.append("Training polygon geometry is empty and cannot be written.")
 
     if errors:
         return FeatureWriteResult(
@@ -190,7 +190,7 @@ def add_training_shape_feature(
             ok=False,
             feature_id=None,
             attribute_plan=attribute_plan,
-            errors=("Could not add the training shape to the target layer.",),
+            errors=("Could not add the training polygon to the target layer.",),
             warnings=tuple(warnings),
         )
 

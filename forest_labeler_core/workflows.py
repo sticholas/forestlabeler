@@ -43,12 +43,12 @@ WORKFLOWS = {
     ),
     WORKFLOW_CREATE_TRAINING_SQUARE: WorkflowDefinition(
         key=WORKFLOW_CREATE_TRAINING_SQUARE,
-        label="Create Training Square",
+        label="Create Training Polygon",
         maturity=MATURITY_PRODUCTION_TARGET,
         source_script="prototypes/canopies_workflow/NewTrainingSquare.py",
-        purpose="Stamp and enrich training square geometry.",
+        purpose="Stamp and enrich configurable training polygon geometry.",
         can_write_data=True,
-        readiness_note="Workflow is tracked, but production migration has not started yet.",
+        readiness_note="Available now. Advanced polygon metadata is still growing.",
     ),
     WORKFLOW_PROPOSE_CANOPIES: WorkflowDefinition(
         key=WORKFLOW_PROPOSE_CANOPIES,

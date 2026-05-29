@@ -43,7 +43,7 @@ class TrainingShapeParameters:
 
 
 def build_training_shape_parameters(segment_length_m, vertex_count, angle_deg=0.0, side_lengths=None):
-    """Validate and normalize training shape parameters."""
+    """Validate and normalize training polygon parameters."""
     segment_length = float(segment_length_m)
     vertices = int(vertex_count)
     if segment_length <= 0:
@@ -71,7 +71,7 @@ def parse_side_lengths_text(text):
 
 
 def training_shape_ring_points(center, params):
-    """Return closed regular-polygon ring points for a training shape."""
+    """Return closed ring points for a training polygon."""
     if params.vertex_count == 3 and params.uses_custom_lengths:
         return _triangle_ring_points(center, params)
 

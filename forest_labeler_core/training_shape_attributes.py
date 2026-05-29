@@ -19,7 +19,7 @@ class TrainingShapeAttributeInputs:
 
 
 def build_training_shape_attribute_plan(inputs: TrainingShapeAttributeInputs, available_fields):
-    """Build optional metadata for a stamped training shape."""
+    """Build optional metadata for a stamped training polygon."""
     available = set(available_fields)
     desired = {
         "fid": inputs.next_fid,

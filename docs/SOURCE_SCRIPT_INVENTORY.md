@@ -220,30 +220,30 @@ Nineteenth migration slice:
 
 Twentieth migration slice:
 
-- `forest_labeler_core/training_square.py` starts the `NewTrainingSquare.py` migration with tested, QGIS-free training shape parameter logic.
-- The dock now shows workflow-specific controls so Label Canopy and Create Training Square no longer share one layer contract.
-- Create Training Square now has a target square layer, segment length, nodes per side, and angle controls; 10 m segments with 11 nodes preserves the existing 100 m default.
+- `forest_labeler_core/training_square.py` starts the `NewTrainingSquare.py` migration with tested, QGIS-free training polygon parameter logic.
+- The dock now shows workflow-specific controls so Label Canopy and Create Training Polygon no longer share one layer contract.
+- Create Training Polygon now has a target polygon layer, side length, vertices, and angle controls; 4 vertices with 100 m sides preserves the original 100 m square use case.
 
 Twenty-first migration slice:
 
-- Training Square controls now treat nodes as polygon vertices/sides: 3 creates a triangle, 4 a square, 6 a hexagon, and higher counts create regular n-gons.
+- Training Polygon controls now treat nodes as polygon vertices/sides: 3 creates a triangle, 4 a square, 6 a hexagon, and higher counts create regular n-gons.
 - Added `forest_labeler_qgis/training_shape_map_tool.py` so the workflow has an activation button, live preview, and click-to-stamp behavior.
 - Segment length now means side length, so the default 4 vertices with 100 m segments creates the existing 100 m square behavior.
 
 Twenty-second migration slice:
 
-- Training Shape map tool restores the original `Q` / `E` rotation shortcuts with 3 degree steps.
+- Training Polygon map tool restores the original `Q` / `E` rotation shortcuts with 3 degree steps.
 - Rotation updates the live preview and writes the current angle to the stamped feature when the target layer has an `angle` field.
 
 Twenty-third migration slice:
 
-- `forest_labeler_core/training_shape_attributes.py` adds tested metadata planning for stamped training shapes.
-- Training Shape writes optional `fid`, side length, vertex count, shape name, angle, area, and ortho source fields when present.
+- `forest_labeler_core/training_shape_attributes.py` adds tested metadata planning for stamped training polygons.
+- Training Polygon writes optional `fid`, side length, vertex count, shape name, angle, area, and ortho source fields when present.
 - `forest_labeler_qgis/training_shape_map_tool.py` now uses the shared feature-writing path instead of setting attributes directly.
 
 Twenty-fourth migration slice:
 
-- Training Shape now supports exact custom side lengths for valid polygons, including rectangles such as `100, 20, 100, 20` and triangles with three differing side lengths.
+- Training Polygon now supports exact custom side lengths for valid polygons, including rectangles such as `100, 20, 100, 20` and triangles with three differing side lengths.
 - Blank custom side lengths preserve the simple equal-side workflow.
 - The dock summarizes custom side lengths and reports validation errors before activation.
 
@@ -254,5 +254,10 @@ Twenty-fifth migration slice:
 
 Twenty-sixth migration slice:
 
-- Training Shape now uses a compact primary path by default and hides angle/custom side-length controls behind an Advanced options toggle.
+- Training Polygon now uses a compact primary path by default and hides angle/custom side-length controls behind an Advanced options toggle.
 - Validation details collapse unless warnings/errors are present, keeping the dock smaller during normal use.
+
+Twenty-seventh migration slice:
+
+- User-facing Track B language now says Training Polygon instead of Training Square/Shape.
+- The canopy-only Layers section is hidden when Training Polygon is active, so the workflow panel only shows relevant controls.

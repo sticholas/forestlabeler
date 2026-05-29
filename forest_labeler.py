@@ -221,15 +221,15 @@ class forestlabeler:
         self.iface.mapCanvas().setMapTool(self.canopy_map_tool)
 
     def activate_training_shape_tool(self):
-        """Activate the Track B training shape stamp map tool."""
+        """Activate the Track B training polygon stamp map tool."""
         if self.dockwidget is None:
             return
 
-        settings = self.dockwidget.training_square_settings()
+        settings = self.dockwidget.training_polygon_settings()
         self.training_shape_map_tool = TrainingShapeMapTool(
             self.iface,
             TrainingShapeMapToolSettings(
-                target_layer=self.dockwidget.selected_training_square_layer(),
+                target_layer=self.dockwidget.selected_training_polygon_layer(),
                 segment_length_m=settings["segment_length_m"],
                 vertex_count=settings["vertex_count"],
                 angle_deg=settings["angle_deg"],
