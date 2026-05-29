@@ -12,40 +12,61 @@ class TrainingShapeAttributeTest(unittest.TestCase):
             TrainingShapeAttributeInputs(
                 next_fid=12,
                 segment_length_m=25.678,
+                side_lengths_label="25.678, 25.678, 25.678, 25.678, 25.678, 25.678",
                 vertex_count=6,
                 shape_name="hexagon",
                 angle_deg=33.333,
                 geometry_area_m2=1624.567,
                 ortho_id="X:/imagery/ortho.tif",
+                plot_area="North",
+                landcover_summary={
+                    "Detailed_L_count": 2,
+                    "Detailed_L_majority": "Dry Forest",
+                    "Detailed_L_majority_pct": 72.5,
+                    "Detailed_L_other_pct": 0.0,
+                },
             ),
             available_fields={
                 "fid",
                 "segment_m",
                 "side_m",
+                "side_lengths",
                 "nodes",
                 "vertices",
                 "shape",
                 "angle",
                 "area_m2",
                 "ortho_id",
+                "plot_area",
+                "Detailed_L_count",
+                "Detailed_L_majority",
+                "Detailed_L_majority_pct",
+                "Detailed_L_other_pct",
             },
         )
 
         self.assertEqual(plan.values["fid"], 12)
         self.assertEqual(plan.values["segment_m"], 25.68)
         self.assertEqual(plan.values["side_m"], 25.68)
+        self.assertEqual(plan.values["side_lengths"], "25.678, 25.678, 25.678, 25.678, 25.678, 25.678")
         self.assertEqual(plan.values["nodes"], 6)
         self.assertEqual(plan.values["vertices"], 6)
         self.assertEqual(plan.values["shape"], "hexagon")
         self.assertEqual(plan.values["angle"], 33.33)
         self.assertEqual(plan.values["area_m2"], 1624.57)
         self.assertEqual(plan.values["ortho_id"], "X:/imagery/ortho.tif")
+        self.assertEqual(plan.values["plot_area"], "North")
+        self.assertEqual(plan.values["Detailed_L_count"], 2)
+        self.assertEqual(plan.values["Detailed_L_majority"], "Dry Forest")
+        self.assertEqual(plan.values["Detailed_L_majority_pct"], 72.5)
+        self.assertEqual(plan.values["Detailed_L_other_pct"], 0.0)
 
     def test_records_skipped_optional_fields(self):
         plan = build_training_shape_attribute_plan(
             TrainingShapeAttributeInputs(
                 next_fid=None,
                 segment_length_m=100,
+                side_lengths_label="100, 100, 100, 100",
                 vertex_count=4,
                 shape_name="square",
                 angle_deg=0,

@@ -42,6 +42,35 @@ class TrainingShapeParameters:
         return bool(self.side_lengths_m)
 
 
+@dataclass(frozen=True)
+class TrainingPolygonPreset:
+    key: str
+    label: str
+    segment_length_m: float
+    vertex_count: int
+    side_lengths_m: tuple = ()
+
+
+TRAINING_POLYGON_PRESETS = (
+    TrainingPolygonPreset("custom", "Custom", 100.0, 4),
+    TrainingPolygonPreset("square_100", "100 m square", 100.0, 4),
+    TrainingPolygonPreset("rectangle_100x20", "100 x 20 m rectangle", 100.0, 4, (100.0, 20.0, 100.0, 20.0)),
+    TrainingPolygonPreset("triangle_25", "25 m triangle", 25.0, 3),
+    TrainingPolygonPreset("hexagon_25", "25 m hexagon", 25.0, 6),
+)
+
+
+def list_training_polygon_presets():
+    return TRAINING_POLYGON_PRESETS
+
+
+def training_polygon_preset_by_key(key):
+    for preset in TRAINING_POLYGON_PRESETS:
+        if preset.key == key:
+            return preset
+    return None
+
+
 def build_training_shape_parameters(segment_length_m, vertex_count, angle_deg=0.0, side_lengths=None):
     """Validate and normalize training polygon parameters."""
     segment_length = float(segment_length_m)

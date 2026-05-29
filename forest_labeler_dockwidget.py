@@ -37,6 +37,7 @@ from .forest_labeler_core.config import (
 from .forest_labeler_core.layer_validation import validate_workflow_layers
 from .forest_labeler_core.training_square import (
     build_training_shape_parameters,
+    list_training_polygon_presets,
     parse_side_lengths_text,
     side_lengths_label,
 )
@@ -68,8 +69,10 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.setupUi(self)
         self._apply_product_styling()
         self._populate_canopy_modes()
+        self._populate_training_polygon_presets()
         self._populate_workflows()
         self.workflowComboBox.currentIndexChanged.connect(self._update_workflow_details)
+        self.trainingPolygonPresetComboBox.currentIndexChanged.connect(self._apply_training_polygon_preset)
         self.refreshLayersButton.clicked.connect(self.refresh_layers)
         self.validateProjectButton.clicked.connect(self.validate_project)
         self.activateLabelingButton.clicked.connect(self._request_labeling)
@@ -311,6 +314,41 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if default_index != -1:
             self.canopyModeComboBox.setCurrentIndex(default_index)
         self.crownTightnessSpinBox.setValue(11)
+
+    def _populate_training_polygon_presets(self):
+        self.trainingPolygonPresetComboBox.blockSignals(True)
+        self.trainingPolygonPresetComboBox.clear()
+        default_index = 0
+        for preset in list_training_polygon_presets():
+            self.trainingPolygonPresetComboBox.addItem(preset.label, preset)
+            if preset.key == "square_100":
+                default_index = self.trainingPolygonPresetComboBox.count() - 1
+        self.trainingPolygonPresetComboBox.setCurrentIndex(default_index)
+        self.trainingPolygonPresetComboBox.blockSignals(False)
+        self._apply_training_polygon_preset()
+
+    def _apply_training_polygon_preset(self):
+        preset = self.trainingPolygonPresetComboBox.currentData()
+        if preset is None or preset.key == "custom":
+            self._update_training_square_summary()
+            return
+
+        self.squareSegmentLengthSpinBox.blockSignals(True)
+        self.squareVertexCountSpinBox.blockSignals(True)
+        self.squareCustomSideLengthsLineEdit.blockSignals(True)
+
+        self.squareSegmentLengthSpinBox.setValue(preset.segment_length_m)
+        self.squareVertexCountSpinBox.setValue(preset.vertex_count)
+        self.squareCustomSideLengthsLineEdit.setText(
+            ", ".join(f"{length:g}" for length in preset.side_lengths_m)
+            if preset.side_lengths_m
+            else ""
+        )
+
+        self.squareSegmentLengthSpinBox.blockSignals(False)
+        self.squareVertexCountSpinBox.blockSignals(False)
+        self.squareCustomSideLengthsLineEdit.blockSignals(False)
+        self._update_training_square_summary()
 
     def _current_workflow(self):
         workflow_key = self.workflowComboBox.currentData()

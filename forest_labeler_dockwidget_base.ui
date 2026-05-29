@@ -185,13 +185,23 @@
           <widget class="QComboBox" name="squareTargetLayerComboBox"/>
          </item>
          <item row="1" column="0">
+          <widget class="QLabel" name="trainingPolygonPresetLabel">
+           <property name="text">
+            <string>Preset</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QComboBox" name="trainingPolygonPresetComboBox"/>
+         </item>
+         <item row="2" column="0">
          <widget class="QLabel" name="squareSegmentLengthLabel">
            <property name="text">
             <string>Side length (m)</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
+         <item row="2" column="1">
           <widget class="QDoubleSpinBox" name="squareSegmentLengthSpinBox">
            <property name="minimum">
             <double>0.100000000000000</double>
@@ -204,14 +214,14 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="0">
+         <item row="3" column="0">
           <widget class="QLabel" name="squareVertexCountLabel">
            <property name="text">
             <string>Vertices</string>
            </property>
           </widget>
          </item>
-         <item row="2" column="1">
+         <item row="3" column="1">
           <widget class="QSpinBox" name="squareVertexCountSpinBox">
            <property name="minimum">
             <number>3</number>
@@ -224,14 +234,14 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="0">
+         <item row="4" column="0">
           <widget class="QLabel" name="squareAngleLabel">
            <property name="text">
             <string>Angle</string>
            </property>
           </widget>
          </item>
-         <item row="3" column="1">
+         <item row="4" column="1">
           <widget class="QDoubleSpinBox" name="squareAngleSpinBox">
            <property name="minimum">
             <double>0.000000000000000</double>
@@ -244,14 +254,14 @@
            </property>
           </widget>
          </item>
-         <item row="4" column="0">
+         <item row="5" column="0">
           <widget class="QLabel" name="squareCustomSideLengthsLabel">
            <property name="text">
             <string>Custom side lengths</string>
            </property>
           </widget>
          </item>
-         <item row="4" column="1">
+         <item row="5" column="1">
           <widget class="QLineEdit" name="squareCustomSideLengthsLineEdit">
            <property name="placeholderText">
             <string>100, 20, 100, 20</string>

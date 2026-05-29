@@ -133,10 +133,13 @@ def add_training_shape_feature(
     geometry,
     *,
     segment_length_m,
+    side_lengths_label,
     vertex_count,
     shape_name,
     angle_deg,
     ortho_id=None,
+    plot_area=None,
+    landcover_summary=None,
     require_editable=True,
 ):
     """Add a training polygon feature through a bounded write path."""
@@ -164,11 +167,14 @@ def add_training_shape_feature(
         TrainingShapeAttributeInputs(
             next_fid=next_fid_for_layer(target_layer),
             segment_length_m=segment_length_m,
+            side_lengths_label=side_lengths_label,
             vertex_count=vertex_count,
             shape_name=shape_name,
             angle_deg=angle_deg,
             geometry_area_m2=geometry.area(),
             ortho_id=ortho_id,
+            plot_area=plot_area,
+            landcover_summary=landcover_summary,
         ),
         layer_field_names(target_layer),
     )

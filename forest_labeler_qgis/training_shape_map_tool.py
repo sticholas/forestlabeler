@@ -2,16 +2,27 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
+import math
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QMessageBox
-from qgis.core import QgsCoordinateTransform, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsWkbTypes
+from qgis.PyQt.QtWidgets import QInputDialog, QMessageBox
+from qgis.core import (
+    QgsCoordinateTransform,
+    QgsGeometry,
+    QgsPointXY,
+    QgsProject,
+    QgsRasterLayer,
+    QgsVectorLayer,
+    QgsWkbTypes,
+)
 from qgis.gui import QgsMapTool, QgsRubberBand
 
 from ..forest_labeler_core.training_square import (
     build_training_shape_parameters,
+    side_lengths_label,
     training_shape_ring_points,
 )
 from .geometry_adapter import polygon_geometry_from_points
@@ -60,7 +71,7 @@ class TrainingShapeMapTool(QgsMapTool):
             "Forest Labeler",
             (
                 f"Create Training Polygon active: {self.params.shape_name}, "
-                f"{self.params.segment_length_m:.2f} m sides. Move to preview, click to stamp."
+                "move to preview, click to stamp. Q/E rotates; R sets an exact angle."
             ),
         )
 
@@ -78,6 +89,9 @@ class TrainingShapeMapTool(QgsMapTool):
             return
         if event.key() == Qt.Key.Key_E:
             self.rotate_preview(self.ROTATION_STEP_DEG)
+            return
+        if event.key() == Qt.Key.Key_R:
+            self.request_exact_angle()
             return
         super().keyPressEvent(event)
 
@@ -108,10 +122,13 @@ class TrainingShapeMapTool(QgsMapTool):
             target_layer,
             geometry,
             segment_length_m=self.params.segment_length_m,
+            side_lengths_label=side_lengths_label(self.params),
             vertex_count=self.params.vertex_count,
             shape_name=self.params.shape_name,
             angle_deg=self.params.angle_deg,
             ortho_id=self._find_ortho_source(center_project),
+            plot_area=self._find_plot_area(center_project),
+            landcover_summary=self._summarize_landcover(geometry),
         )
         if not write_result.ok:
             QMessageBox.warning(None, "Add feature failed", "\n".join(write_result.errors))
@@ -145,7 +162,31 @@ class TrainingShapeMapTool(QgsMapTool):
         self.refresh_preview()
         self.iface.messageBar().pushInfo(
             "Forest Labeler",
-            f"Training shape angle: {self.params.angle_deg:.1f}°",
+            f"Training polygon angle: {self.params.angle_deg:.1f}°",
+        )
+
+    def request_exact_angle(self):
+        angle, accepted = QInputDialog.getDouble(
+            None,
+            "Training Polygon Rotation",
+            "Angle in degrees",
+            self.params.angle_deg,
+            0.0,
+            359.99,
+            2,
+        )
+        if not accepted:
+            return
+        self.params = build_training_shape_parameters(
+            self.params.segment_length_m,
+            self.params.vertex_count,
+            angle,
+            side_lengths=self.params.side_lengths_m,
+        )
+        self.refresh_preview()
+        self.iface.messageBar().pushInfo(
+            "Forest Labeler",
+            f"Training polygon angle: {self.params.angle_deg:.2f}°",
         )
 
     def _geometry_for_project_center(self, center_project):
@@ -178,3 +219,140 @@ class TrainingShapeMapTool(QgsMapTool):
             if layer.extent().contains(center_layer):
                 return layer.source()
         return None
+
+    def _find_plot_area(self, center_project):
+        area_layer = self._find_plot_area_layer()
+        if area_layer is None or area_layer.fields().indexOf("name") == -1:
+            return None
+
+        center_area = self._transform_point(center_project, self.project_crs, area_layer.crs())
+        center_geometry = QgsGeometry.fromPointXY(center_area)
+        for feature in area_layer.getFeatures():
+            geometry = feature.geometry()
+            if geometry and geometry.contains(center_geometry):
+                value = feature["name"]
+                return str(value) if value is not None else None
+        return None
+
+    def _find_plot_area_layer(self):
+        for layer in QgsProject.instance().mapLayers().values():
+            if not isinstance(layer, QgsVectorLayer):
+                continue
+            layer_name = layer.name().lower()
+            if "customvegitationareas" in layer_name or "customvegetationareas" in layer_name:
+                return layer
+        return None
+
+    def _find_landcover_layer(self):
+        for layer in QgsProject.instance().mapLayers().values():
+            if isinstance(layer, QgsRasterLayer) and layer.name() == "CAH_LandCover":
+                return layer
+        return None
+
+    def _summarize_landcover(self, target_geometry):
+        landcover_layer = self._find_landcover_layer()
+        if landcover_layer is None:
+            return None
+
+        geometry = QgsGeometry(target_geometry)
+        if self.settings.target_layer.crs() != landcover_layer.crs():
+            transform = QgsCoordinateTransform(
+                self.settings.target_layer.crs(),
+                landcover_layer.crs(),
+                QgsProject.instance(),
+            )
+            geometry.transform(transform)
+
+        bbox = geometry.boundingBox()
+        try:
+            step = max(
+                min(
+                    max(
+                        abs(landcover_layer.rasterUnitsPerPixelX()),
+                        abs(landcover_layer.rasterUnitsPerPixelY()),
+                    ),
+                    10.0,
+                ),
+                1.0,
+            )
+        except Exception:
+            step = 2.0
+        step = self._bounded_landcover_sample_step(bbox, step)
+
+        provider = landcover_layer.dataProvider()
+        value_counts = Counter()
+
+        x_coord = bbox.xMinimum() + step / 2.0
+        while x_coord < bbox.xMaximum():
+            y_coord = bbox.yMinimum() + step / 2.0
+            while y_coord < bbox.yMaximum():
+                point = QgsPointXY(x_coord, y_coord)
+                if geometry.contains(QgsGeometry.fromPointXY(point)):
+                    value, ok = provider.sample(point, 1)
+                    if ok and value is not None:
+                        try:
+                            value_counts[int(round(float(value)))] += 1
+                        except Exception:
+                            pass
+                y_coord += step
+            x_coord += step
+
+        if not value_counts:
+            return None
+
+        total = sum(value_counts.values())
+        label_counts = Counter()
+        for raster_value, count in value_counts.items():
+            label_counts[self._landcover_label_lookup(landcover_layer, raster_value)] += count
+
+        ranked = label_counts.most_common()
+        summary = {"Detailed_L_count": len(ranked)}
+        labels_pcts = [
+            (label, round(100.0 * count / total, 1))
+            for label, count in ranked[:3]
+        ]
+
+        if labels_pcts:
+            summary["Detailed_L_majority"] = labels_pcts[0][0]
+            summary["Detailed_L_majority_pct"] = labels_pcts[0][1]
+
+        for index, (label, pct) in enumerate(labels_pcts, start=1):
+            summary[f"Detailed_L{index}"] = label
+            summary[f"Detailed_L{index}_pct"] = pct
+
+        top3_pct = round(sum(pct for _, pct in labels_pcts), 1)
+        summary["Detailed_L_other_pct"] = max(0.0, round(100.0 - top3_pct, 1))
+        return summary
+
+    def _bounded_landcover_sample_step(self, bbox, base_step):
+        max_samples = 5000
+        width = max(0.0, bbox.width())
+        height = max(0.0, bbox.height())
+        estimated_samples = (width / base_step) * (height / base_step)
+        if estimated_samples <= max_samples:
+            return base_step
+        return max(base_step, math.sqrt((width * height) / max_samples))
+
+    def _landcover_label_lookup(self, landcover_layer, raster_value):
+        try:
+            provider = landcover_layer.dataProvider()
+            rat = provider.attributeTable(1)
+            if rat is None:
+                return str(raster_value)
+            try:
+                fields = rat.qgisFields()
+            except Exception:
+                fields = rat.fields()
+            label_index = fields.indexOf("Detailed_L")
+            if label_index == -1:
+                return str(raster_value)
+            row = rat.row(float(raster_value))
+            if not row:
+                return str(raster_value)
+            label = row[label_index]
+            if label is None:
+                return str(raster_value)
+            label_text = str(label).strip()
+            return label_text if label_text else str(raster_value)
+        except Exception:
+            return str(raster_value)

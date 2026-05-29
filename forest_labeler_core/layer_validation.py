@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from qgis.core import Qgis, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 
 from .config import SPECIES_CODE_FIELD, TARGET_RECOMMENDED_FIELDS, TARGET_REQUIRED_FIELDS
+from .training_shape_attributes import TRAINING_POLYGON_RECOMMENDED_FIELDS
 from .workflows import WORKFLOW_CREATE_TRAINING_SQUARE, WORKFLOW_LABEL_CANOPY
 
 
@@ -45,7 +46,21 @@ def validate_training_square_layers(target_layer):
     """Validate selected target layer for Training Polygon creation."""
     errors = []
     warnings = []
+    error_count = len(errors)
     _validate_polygon_target_layer(target_layer, errors, warnings, "target training polygon layer")
+    if len(errors) > error_count:
+        return ValidationResult(errors=errors, warnings=warnings)
+
+    missing_recommended = [
+        field for field in TRAINING_POLYGON_RECOMMENDED_FIELDS if target_layer.fields().indexOf(field) == -1
+    ]
+    if missing_recommended:
+        warnings.append(
+            f"'{target_layer.name()}' can be used, but optional training polygon metadata will not be stored "
+            "unless these field(s) are added: "
+            + ", ".join(missing_recommended)
+            + "."
+        )
     return ValidationResult(errors=errors, warnings=warnings)
 
 

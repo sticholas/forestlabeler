@@ -2,6 +2,7 @@ import unittest
 
 from forest_labeler_core.training_square import (
     build_training_shape_parameters,
+    list_training_polygon_presets,
     parse_side_lengths_text,
     side_lengths,
     side_lengths_label,
@@ -63,6 +64,15 @@ class TrainingShapeTest(unittest.TestCase):
         self.assertEqual(parse_side_lengths_text("100, 20; 100|20"), (100.0, 20.0, 100.0, 20.0))
         params = build_training_shape_parameters(100, 4, side_lengths=parse_side_lengths_text("100 20 100 20"))
         self.assertEqual(side_lengths_label(params), "100, 20, 100, 20")
+
+    def test_training_polygon_presets_cover_common_field_shapes(self):
+        presets = {preset.key: preset for preset in list_training_polygon_presets()}
+
+        self.assertEqual(presets["square_100"].vertex_count, 4)
+        self.assertEqual(presets["square_100"].segment_length_m, 100.0)
+        self.assertEqual(presets["rectangle_100x20"].side_lengths_m, (100.0, 20.0, 100.0, 20.0))
+        self.assertEqual(presets["triangle_25"].vertex_count, 3)
+        self.assertEqual(presets["hexagon_25"].vertex_count, 6)
 
     def test_rejects_invalid_parameters(self):
         with self.assertRaises(ValueError):

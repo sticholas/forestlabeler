@@ -261,3 +261,10 @@ Twenty-seventh migration slice:
 
 - User-facing Track B language now says Training Polygon instead of Training Square/Shape.
 - The canopy-only Layers section is hidden when Training Polygon is active, so the workflow panel only shows relevant controls.
+
+Twenty-eighth migration slice:
+
+- Training Polygon now includes reusable presets for common field layouts: 100 m square, 100 x 20 m rectangle, 25 m triangle, and 25 m hexagon.
+- The map tool keeps `Q` / `E` rotation and adds `R` for exact angle entry during digitizing.
+- Training Polygon validation now recommends a fuller metadata schema for side lengths, plot area, ortho source, and land-cover summaries.
+- Stamped polygons can now populate optional `plot_area` from the project vegetation area layer and `Detailed_L*` land-cover summary fields from `CAH_LandCover` when those supporting layers are loaded.
