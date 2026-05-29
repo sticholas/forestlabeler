@@ -60,6 +60,8 @@ Current package boundaries:
 - `forest_labeler_core/`: pure business rules and algorithm helpers that can run in ordinary Python.
 - `forest_labeler_qgis/`: QGIS adapters for layers, features, rasters, map tools, edit sessions, and UI-facing side effects.
 
+Workflow mode metadata lives in `forest_labeler_core/workflows.py`. This registry should drive future UI mode selectors, experimental warnings, and workflow-specific validation.
+
 ## Feedback Loop
 
 Production workflows should record enough context for later QA and improvement:

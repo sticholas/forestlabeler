@@ -157,3 +157,8 @@ Eighth migration slice:
 
 - `forest_labeler_core/feedback.py` adds QGIS-independent feedback validation and summary rules.
 - `unit_tests/test_feedback.py` covers feedback validation, setting-level summaries, minimum sample requirements, and invalid feedback rejection.
+
+Ninth migration slice:
+
+- `forest_labeler_core/workflows.py` turns product tracks into code-level workflow metadata.
+- `unit_tests/test_workflows.py` covers production priorities, experimental filtering, unknown workflows, and confirmation requirements.
