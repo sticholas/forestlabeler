@@ -34,8 +34,13 @@ from .forest_labeler_core.config import (
     SPECIES_POINT_LAYER_NAME,
     TARGET_LAYER_NAME,
 )
-from .forest_labeler_core.layer_validation import validate_plugin_layers
-from .forest_labeler_core.workflows import WORKFLOW_LABEL_CANOPY, list_workflows
+from .forest_labeler_core.layer_validation import validate_workflow_layers
+from .forest_labeler_core.training_square import build_training_square_parameters
+from .forest_labeler_core.workflows import (
+    WORKFLOW_CREATE_TRAINING_SQUARE,
+    WORKFLOW_LABEL_CANOPY,
+    list_workflows,
+)
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'forest_labeler_dockwidget_base.ui'))
@@ -62,6 +67,10 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.refreshLayersButton.clicked.connect(self.refresh_layers)
         self.validateProjectButton.clicked.connect(self.validate_project)
         self.activateLabelingButton.clicked.connect(self._request_labeling)
+        self.squareSegmentLengthSpinBox.valueChanged.connect(self._update_training_square_summary)
+        self.squareNodesPerSideSpinBox.valueChanged.connect(self._update_training_square_summary)
+        self.squareAngleSpinBox.valueChanged.connect(self._update_training_square_summary)
+        self._update_training_square_summary()
         self.refresh_layers()
 
     def closeEvent(self, event):
@@ -83,6 +92,12 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             allow_none=False,
         )
         self._populate_combo(
+            self.squareTargetLayerComboBox,
+            self._vector_layers(Qgis.GeometryType.Polygon),
+            preferred_name="training_squares",
+            allow_none=False,
+        )
+        self._populate_combo(
             self.speciesLayerComboBox,
             self._vector_layers(Qgis.GeometryType.Point),
             preferred_name=SPECIES_POINT_LAYER_NAME,
@@ -93,10 +108,12 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def validate_project(self):
         """Validate selected layers and report whether labeling can start."""
-        result = validate_plugin_layers(
-            self._current_layer(self.chmLayerComboBox),
-            self._current_layer(self.targetLayerComboBox),
-            self._current_layer(self.speciesLayerComboBox),
+        workflow_key = self.workflowComboBox.currentData()
+        result = validate_workflow_layers(
+            workflow_key,
+            chm_layer=self._current_layer(self.chmLayerComboBox),
+            target_layer=self._target_layer_for_workflow(workflow_key),
+            species_layer=self._current_layer(self.speciesLayerComboBox),
         )
 
         lines = []
@@ -110,7 +127,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             lines.extend(f"- {message}" for message in result.warnings)
 
         if result.ok:
-            self.statusSummaryLabel.setText("Validation passed. Label Canopy can be activated.")
+            self.statusSummaryLabel.setText("Validation passed for selected workflow.")
             if not lines:
                 lines.append("No validation issues found.")
             self._push_message("Forest Labeler validation passed.", Qgis.Success)
@@ -129,10 +146,26 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self._current_layer(self.speciesLayerComboBox),
         )
 
+    def selected_training_square_layer(self):
+        return self._current_layer(self.squareTargetLayerComboBox)
+
     def canopy_settings(self):
         return {
             "canopy_mode": self.canopyModeComboBox.currentText(),
             "crown_tightness": self.crownTightnessSpinBox.value(),
+        }
+
+    def training_square_settings(self):
+        params = build_training_square_parameters(
+            self.squareSegmentLengthSpinBox.value(),
+            self.squareNodesPerSideSpinBox.value(),
+            self.squareAngleSpinBox.value(),
+        )
+        return {
+            "segment_length_m": params.segment_length_m,
+            "nodes_per_side": params.nodes_per_side,
+            "side_length_m": params.side_length_m,
+            "angle_deg": params.angle_deg,
         }
 
     def _populate_workflows(self):
@@ -179,6 +212,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if workflow.experimental_warning:
             details = details + "\n" + workflow.experimental_warning
         self.workflowDescriptionLabel.setText(details)
+        self._update_workflow_controls(workflow.key)
 
     def _request_labeling(self):
         if self.workflowComboBox.currentData() != WORKFLOW_LABEL_CANOPY:
@@ -191,6 +225,36 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             return
 
         self.activateLabelingRequested.emit()
+
+    def _target_layer_for_workflow(self, workflow_key):
+        if workflow_key == WORKFLOW_CREATE_TRAINING_SQUARE:
+            return self._current_layer(self.squareTargetLayerComboBox)
+        return self._current_layer(self.targetLayerComboBox)
+
+    def _update_workflow_controls(self, workflow_key):
+        is_canopy = workflow_key == WORKFLOW_LABEL_CANOPY
+        is_square = workflow_key == WORKFLOW_CREATE_TRAINING_SQUARE
+
+        self.chmLayerLabel.setVisible(is_canopy)
+        self.chmLayerComboBox.setVisible(is_canopy)
+        self.targetLayerLabel.setVisible(is_canopy)
+        self.targetLayerComboBox.setVisible(is_canopy)
+        self.speciesLayerLabel.setVisible(is_canopy)
+        self.speciesLayerComboBox.setVisible(is_canopy)
+        self.labelCanopyGroupBox.setVisible(is_canopy)
+        self.trainingSquareGroupBox.setVisible(is_square)
+        if is_square:
+            self._update_training_square_summary()
+
+    def _update_training_square_summary(self):
+        settings = self.training_square_settings()
+        self.trainingSquareSummaryLabel.setText(
+            "Creates a {side:.2f} m square from {nodes} nodes per side at {segment:.2f} m spacing.".format(
+                side=settings["side_length_m"],
+                nodes=settings["nodes_per_side"],
+                segment=settings["segment_length_m"],
+            )
+        )
 
     def _populate_combo(self, combo, layers, preferred_name, allow_none):
         combo.blockSignals(True)

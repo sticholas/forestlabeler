@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from qgis.core import Qgis, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 
 from .config import SPECIES_CODE_FIELD, TARGET_RECOMMENDED_FIELDS, TARGET_REQUIRED_FIELDS
+from .workflows import WORKFLOW_CREATE_TRAINING_SQUARE, WORKFLOW_LABEL_CANOPY
 
 
 @dataclass
@@ -31,6 +32,23 @@ def validate_plugin_layers(chm_layer, target_layer, species_layer=None):
     return ValidationResult(errors=errors, warnings=warnings)
 
 
+def validate_workflow_layers(workflow_key, *, chm_layer=None, target_layer=None, species_layer=None):
+    """Validate only the layers required by a specific workflow."""
+    if workflow_key == WORKFLOW_CREATE_TRAINING_SQUARE:
+        return validate_training_square_layers(target_layer)
+    if workflow_key == WORKFLOW_LABEL_CANOPY:
+        return validate_plugin_layers(chm_layer, target_layer, species_layer)
+    return validate_plugin_layers(chm_layer, target_layer, species_layer)
+
+
+def validate_training_square_layers(target_layer):
+    """Validate selected target layer for Training Square creation."""
+    errors = []
+    warnings = []
+    _validate_polygon_target_layer(target_layer, errors, warnings, "target training square layer")
+    return ValidationResult(errors=errors, warnings=warnings)
+
+
 def _validate_chm_layer(layer, errors):
     if layer is None:
         errors.append("Select a canopy height model raster layer.")
@@ -45,23 +63,10 @@ def _validate_chm_layer(layer, errors):
 
 
 def _validate_target_layer(layer, errors, warnings):
-    if layer is None:
-        errors.append("Select a target canopy polygon layer.")
+    error_count = len(errors)
+    _validate_polygon_target_layer(layer, errors, warnings, "target canopy polygon layer")
+    if len(errors) > error_count:
         return
-
-    if not isinstance(layer, QgsVectorLayer):
-        errors.append(f"'{layer.name()}' must be a vector polygon layer.")
-        return
-
-    if not layer.isValid():
-        errors.append(f"'{layer.name()}' is not a valid vector layer.")
-        return
-
-    if layer.geometryType() != Qgis.GeometryType.Polygon:
-        errors.append(f"'{layer.name()}' must have polygon geometry.")
-
-    if QgsWkbTypes.hasZ(layer.wkbType()):
-        warnings.append(f"'{layer.name()}' has Z values; generated canopy geometry will be 2D.")
 
     fields = layer.fields()
     missing_required = [field for field in TARGET_REQUIRED_FIELDS if fields.indexOf(field) == -1]
@@ -81,8 +86,28 @@ def _validate_target_layer(layer, errors, warnings):
             + "."
         )
 
+
+def _validate_polygon_target_layer(layer, errors, warnings, label):
+    if layer is None:
+        errors.append(f"Select a {label}.")
+        return
+
+    if not isinstance(layer, QgsVectorLayer):
+        errors.append(f"'{layer.name()}' must be a vector polygon layer.")
+        return
+
+    if not layer.isValid():
+        errors.append(f"'{layer.name()}' is not a valid vector layer.")
+        return
+
+    if layer.geometryType() != Qgis.GeometryType.Polygon:
+        errors.append(f"'{layer.name()}' must have polygon geometry.")
+
+    if QgsWkbTypes.hasZ(layer.wkbType()):
+        warnings.append(f"'{layer.name()}' has Z values; generated geometry will be 2D.")
+
     if _layer_is_read_only(layer):
-        errors.append(f"'{layer.name()}' is read-only and cannot receive canopy features.")
+        errors.append(f"'{layer.name()}' is read-only and cannot receive generated features.")
 
 
 def _validate_species_layer(layer, errors):

@@ -217,3 +217,9 @@ Nineteenth migration slice:
 
 - Press-hold interaction now shows a stable seed-radius circle during sizing.
 - Crown inference runs once on release, allowing the final polygon to snap/refine to the local canopy apex without jittering while the user is holding the mouse.
+
+Twentieth migration slice:
+
+- `forest_labeler_core/training_square.py` starts the `NewTrainingSquare.py` migration with tested, QGIS-free square/grid parameter logic.
+- The dock now shows workflow-specific controls so Label Canopy and Create Training Square no longer share one layer contract.
+- Create Training Square now has a target square layer, segment length, nodes per side, and angle controls; 10 m segments with 11 nodes preserves the existing 100 m default.
