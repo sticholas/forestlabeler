@@ -31,3 +31,4 @@ This project is in foundation phase. The installed plugin opens in QGIS, but the
 - [Decision Framework](docs/DECISION_FRAMEWORK.md)
 - [Feedback And Evaluation](docs/FEEDBACK_AND_EVALUATION.md)
 - [Future Capabilities](docs/FUTURE_CAPABILITIES.md)
+- [Implementation Plan](docs/IMPLEMENTATION_PLAN.md)

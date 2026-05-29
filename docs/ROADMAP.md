@@ -61,6 +61,8 @@ Needs more work if:
 
 Goal: move prototype logic into maintainable modules.
 
+Detailed execution plan: [Implementation Plan](IMPLEMENTATION_PLAN.md)
+
 - Identify reusable functions from `canopoly.py` and prototype scripts.
 - Create config/preset objects for dense, sparse, and mixed canopy modes.
 - Separate raster sampling, geometry creation, species lookup, and metadata filling.
