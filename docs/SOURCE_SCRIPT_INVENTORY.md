@@ -200,3 +200,9 @@ Sixteenth migration slice:
 - `forest_labeler_core/raster_analysis.py` extracts competing-apex discovery from `CanopyCrownLabeler.py`.
 - `forest_labeler_core/crown_builder.py` now passes nearby apex candidates into crown-radius inference so preview crowns can respect neighboring canopy peaks.
 - Unit coverage checks competing-apex height filtering, minimum spacing, target-apex preservation, and constrained crown growth near a neighboring peak.
+
+Seventeenth migration slice:
+
+- `forest_labeler_qgis/crown_preview_service.py` adds the first QGIS adapter bridge from CHM sampling to preview crown geometry.
+- The adapter keeps parameter selection, raster sampling, QGIS polygon creation, and CRS transformation outside the pure crown builder so core inference remains unit-testable.
+- Runtime behavior still needs manual QGIS verification when the interactive map tool is wired.
