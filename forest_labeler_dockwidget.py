@@ -53,6 +53,7 @@ from .forest_labeler_qgis.training_polygon_review import (
     REVIEW_STATUS_UNSURE,
     mark_selected_training_polygons,
     summarize_training_polygon_layer_reviews,
+    training_polygon_layer_quality_insight_lines,
 )
 from .forest_labeler_core.training_polygon_review import format_training_polygon_review_summary
 
@@ -505,8 +506,14 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             return
 
         lines = format_training_polygon_review_summary(summary)
+        try:
+            insight_lines = training_polygon_layer_quality_insight_lines(
+                self.selected_training_polygon_layer()
+            )
+        except ValueError:
+            insight_lines = ()
         self.statusSummaryLabel.setText("Training Polygon review summary updated.")
-        self.statusTextEdit.setPlainText("\n".join(lines))
+        self.statusTextEdit.setPlainText("\n".join(lines + ("",) + tuple(insight_lines)))
         self.statusTextEdit.setVisible(True)
         self._push_message("Training Polygon review summary updated.", Qgis.Info)
 

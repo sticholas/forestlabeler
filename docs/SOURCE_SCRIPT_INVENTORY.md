@@ -286,3 +286,9 @@ Thirty-first migration slice:
 - Training Polygon now has a `Review Summary` action that reports total, reviewed, unreviewed, accepted, rejected, and unsure counts for the selected layer.
 - Review summary logic is covered by pure unit tests so future recommendation engines can build on stable acceptance-rate and attention-count calculations.
 - The review summary uses both `review_status` and legacy `reviewed` flags, which keeps older or partially populated layers useful.
+
+Thirty-second migration slice:
+
+- Training Polygon review summaries now include pattern insights once a shape/side-length pattern has enough reviewed examples.
+- Pattern insights identify the best-performing pattern by acceptance rate and the pattern that most needs attention by rejected/unsure count.
+- The insight engine is pure and tested, which gives future adaptive recommendations a stable contract before any automated behavior is introduced.

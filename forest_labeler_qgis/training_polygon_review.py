@@ -10,6 +10,7 @@ from ..forest_labeler_core.training_polygon_review import (
     REVIEW_STATUS_UNSURE,
     REVIEWED_FLAG_BY_STATUS,
     summarize_training_polygon_reviews,
+    training_polygon_quality_insight_lines,
 )
 
 
@@ -96,14 +97,32 @@ def summarize_training_polygon_layer_reviews(layer):
     if layer is None:
         raise ValueError("Select a Training Polygon target layer.")
 
+    return summarize_training_polygon_reviews(_training_polygon_review_records(layer))
+
+
+def training_polygon_layer_quality_insight_lines(layer, min_reviewed=3):
+    """Return pattern insight lines for a Training Polygon layer."""
+    if layer is None:
+        raise ValueError("Select a Training Polygon target layer.")
+
+    records = _training_polygon_review_records(layer)
+    return training_polygon_quality_insight_lines(records, min_reviewed=min_reviewed)
+
+
+def _training_polygon_review_records(layer):
     reviewed_index = layer.fields().indexOf("reviewed")
     status_index = layer.fields().indexOf("review_status")
+    shape_index = layer.fields().indexOf("shape")
+    side_lengths_index = layer.fields().indexOf("side_lengths")
+
     records = []
     for feature in layer.getFeatures():
         records.append(
             {
                 "reviewed": feature[reviewed_index] if reviewed_index != -1 else None,
                 "review_status": feature[status_index] if status_index != -1 else None,
+                "shape": feature[shape_index] if shape_index != -1 else None,
+                "side_lengths": feature[side_lengths_index] if side_lengths_index != -1 else None,
             }
         )
-    return summarize_training_polygon_reviews(records)
+    return records
