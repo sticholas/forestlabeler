@@ -274,3 +274,9 @@ Twenty-ninth migration slice:
 - Training Polygon now has an `Add Metadata Fields` action that adds missing optional fields to the selected target layer after user confirmation.
 - Training Polygon schema definitions now live in one typed field-spec list so validation, repair actions, and write behavior stay aligned.
 - New Training Polygon features now default optional review metadata to `reviewed = 0` and `review_status = unreviewed` when those fields exist.
+
+Thirtieth migration slice:
+
+- Training Polygon now includes lightweight review actions for selected features: `Accept`, `Reject`, and `Unsure`.
+- Review actions update `reviewed`, `review_status`, and optional `review_note` fields, creating the first in-tool feedback loop for later learning and quality reporting.
+- Review updates require the target layer to be in edit mode, matching the safer write behavior used by polygon stamping.

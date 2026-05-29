@@ -47,6 +47,12 @@ from .forest_labeler_core.workflows import (
     list_workflows,
 )
 from .forest_labeler_qgis.training_polygon_schema import repair_training_polygon_schema
+from .forest_labeler_qgis.training_polygon_review import (
+    REVIEW_STATUS_ACCEPTED,
+    REVIEW_STATUS_REJECTED,
+    REVIEW_STATUS_UNSURE,
+    mark_selected_training_polygons,
+)
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'forest_labeler_dockwidget_base.ui'))
@@ -79,6 +85,15 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.activateLabelingButton.clicked.connect(self._request_labeling)
         self.activateTrainingShapeButton.clicked.connect(self._request_training_polygon)
         self.repairTrainingPolygonSchemaButton.clicked.connect(self._repair_training_polygon_schema)
+        self.markTrainingPolygonAcceptedButton.clicked.connect(
+            lambda: self._mark_selected_training_polygons(REVIEW_STATUS_ACCEPTED)
+        )
+        self.markTrainingPolygonRejectedButton.clicked.connect(
+            lambda: self._mark_selected_training_polygons(REVIEW_STATUS_REJECTED)
+        )
+        self.markTrainingPolygonUnsureButton.clicked.connect(
+            lambda: self._mark_selected_training_polygons(REVIEW_STATUS_UNSURE)
+        )
         self.trainingAdvancedCheckBox.toggled.connect(self._update_training_advanced_controls)
         self.squareSegmentLengthSpinBox.valueChanged.connect(self._update_training_square_summary)
         self.squareVertexCountSpinBox.valueChanged.connect(self._update_training_square_summary)
@@ -160,6 +175,9 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.validateProjectButton.setProperty("buttonRole", "secondary")
         self.refreshLayersButton.setProperty("buttonRole", "secondary")
         self.repairTrainingPolygonSchemaButton.setProperty("buttonRole", "secondary")
+        self.markTrainingPolygonAcceptedButton.setProperty("buttonRole", "secondary")
+        self.markTrainingPolygonRejectedButton.setProperty("buttonRole", "secondary")
+        self.markTrainingPolygonUnsureButton.setProperty("buttonRole", "secondary")
         self.workflowMaturityLabel.setProperty("tone", "badge")
         self.workflowDescriptionLabel.setProperty("tone", "muted")
         self.trainingSquareSummaryLabel.setProperty("tone", "hint")
@@ -446,6 +464,31 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self.statusTextEdit.setPlainText("\n".join(result.errors))
             self.statusTextEdit.setVisible(True)
             self._push_message("Training Polygon schema update failed.", Qgis.Warning)
+
+    def _mark_selected_training_polygons(self, status):
+        layer = self.selected_training_polygon_layer()
+        result = mark_selected_training_polygons(
+            layer,
+            status,
+            note=self.trainingPolygonReviewNoteLineEdit.text(),
+        )
+        if result.ok:
+            self.statusSummaryLabel.setText(
+                f"Marked {result.updated_count} selected polygon(s) as {status}."
+            )
+            if result.warnings:
+                self.statusTextEdit.setPlainText("\n".join(result.warnings))
+                self.statusTextEdit.setVisible(True)
+            else:
+                self.statusTextEdit.clear()
+                self.statusTextEdit.setVisible(False)
+            self.trainingPolygonReviewNoteLineEdit.clear()
+            self._push_message("Training Polygon review status updated.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Could not update Training Polygon review status.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors + result.warnings))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Training Polygon review update failed.", Qgis.Warning)
 
     def _target_layer_for_workflow(self, workflow_key):
         if workflow_key == WORKFLOW_CREATE_TRAINING_SQUARE:

@@ -292,6 +292,41 @@
         </widget>
        </item>
        <item>
+        <widget class="QLineEdit" name="trainingPolygonReviewNoteLineEdit">
+         <property name="placeholderText">
+          <string>Optional review note for selected polygons</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="trainingPolygonReviewLayout">
+         <property name="spacing">
+          <number>6</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="markTrainingPolygonAcceptedButton">
+           <property name="text">
+            <string>Accept</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="markTrainingPolygonRejectedButton">
+           <property name="text">
+            <string>Reject</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="markTrainingPolygonUnsureButton">
+           <property name="text">
+            <string>Unsure</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
         <widget class="QLabel" name="trainingSquareSummaryLabel">
          <property name="text">
           <string>Default creates a four-sided polygon with equal side lengths.</string>
