@@ -188,3 +188,9 @@ Fourteenth migration slice:
 
 - `forest_labeler_core/crown_inference.py` extracts ownership scoring, competitor penalty, one-profile radius inference, and multi-angle crown radius inference.
 - `unit_tests/test_crown_inference.py` covers ownership, competitor pressure, short profiles, edge-radius inference, and configured angle counts.
+
+Fifteenth migration slice:
+
+- `forest_labeler_core/crown_builder.py` composes local apex search, thresholding, crown radius inference, smoothing, and point generation into a preview-safe crown build result.
+- The builder returns polygon points and metadata without creating QGIS geometry or writing features.
+- `unit_tests/test_crown_builder.py` covers circle fallback and refined crown point generation.
