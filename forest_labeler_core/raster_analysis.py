@@ -72,6 +72,47 @@ def find_local_apex(center, search_radius, step, sample_value):
     return best_point, best_value
 
 
+def find_competing_apexes(
+    apex_point,
+    apex_value,
+    search_radius,
+    step,
+    threshold,
+    sample_value,
+    *,
+    min_relative_height,
+    min_separation_m,
+):
+    """Find nearby apex candidates that can constrain a crown boundary."""
+    apex_x, apex_y = xy(apex_point)
+    min_candidate_value = max(threshold, apex_value * min_relative_height)
+    candidates = []
+
+    x_pos = apex_x - search_radius
+    while x_pos <= apex_x + search_radius + 1e-9:
+        y_pos = apex_y - search_radius
+        while y_pos <= apex_y + search_radius + 1e-9:
+            point = (x_pos, y_pos)
+            if distance_xy(point, apex_point) <= search_radius:
+                value = sample_value(point)
+                if value is not None and value >= min_candidate_value:
+                    candidates.append((point, value))
+            y_pos += step
+        x_pos += step
+
+    candidates.sort(key=lambda item: item[1], reverse=True)
+
+    apexes = []
+    for point, value in candidates:
+        if all(distance_xy(point, kept_point) >= min_separation_m for kept_point, _ in apexes):
+            apexes.append((point, value))
+
+    if all(distance_xy(apex_point, point) >= 1e-6 for point, _ in apexes):
+        apexes.insert(0, (apex_point, apex_value))
+
+    return apexes
+
+
 def inner_support_threshold(
     apex_point,
     apex_value,

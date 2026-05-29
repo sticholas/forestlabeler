@@ -7,7 +7,12 @@ from dataclasses import dataclass
 from .crown_inference import infer_crown_radii
 from .geometry_math import circle_points, radii_to_points
 from .numeric import circular_gaussian_smooth, circular_moving_average
-from .raster_analysis import find_local_apex, inner_support_threshold, sample_profile
+from .raster_analysis import (
+    find_competing_apexes,
+    find_local_apex,
+    inner_support_threshold,
+    sample_profile,
+)
 
 
 @dataclass(frozen=True)
@@ -53,6 +58,20 @@ def build_crown_preview_points(center, seed_radius, params, sample_value):
         inner_support_radius_factor=params.inner_support_radius_factor,
         inner_support_radius_min_m=params.inner_support_radius_min_m,
     )
+    competing_search_radius = max(
+        seed_radius * params.competing_apex_search_factor,
+        seed_radius + params.competing_apex_extra_m,
+    )
+    competing_apexes = find_competing_apexes(
+        apex_point,
+        apex_value,
+        competing_search_radius,
+        cell_size,
+        threshold,
+        sample_value,
+        min_relative_height=params.competing_apex_min_relative_height,
+        min_separation_m=params.competing_apex_min_separation_m,
+    )
 
     profile_sampler = lambda point, angle, max_search, step: sample_profile(
         point,
@@ -66,7 +85,7 @@ def build_crown_preview_points(center, seed_radius, params, sample_value):
         apex_value=apex_value,
         seed_radius=seed_radius,
         threshold=threshold,
-        competing_apexes=[(apex_point, apex_value)],
+        competing_apexes=competing_apexes,
         params=params,
         sample_profile=profile_sampler,
     )

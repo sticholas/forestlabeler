@@ -41,6 +41,25 @@ class CrownBuilderTest(unittest.TestCase):
         self.assertEqual(len(result.points), params.num_angles + 1)
         self.assertEqual(result.points[0], result.points[-1])
 
+    def test_competing_peak_constrains_crown_growth(self):
+        params = build_canopy_parameters("DENSE", 11)
+
+        def sampler(point):
+            x_val, y_val = point
+            target = max(0.0, 10.0 - 1.0 * (x_val * x_val + y_val * y_val) ** 0.5)
+            competitor = max(0.0, 8.0 - 1.0 * ((x_val - 4.0) ** 2 + y_val * y_val) ** 0.5)
+            return max(target, competitor)
+
+        result = build_crown_preview_points(
+            center=(0, 0),
+            seed_radius=3,
+            params=params,
+            sample_value=sampler,
+        )
+
+        east_x = max(point[0] for point in result.points)
+        self.assertLess(east_x, 6.0)
+
 
 if __name__ == "__main__":
     unittest.main()
