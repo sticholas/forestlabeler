@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>360</width>
-    <height>420</height>
+    <height>520</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,6 +15,38 @@
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QVBoxLayout" name="mainLayout">
+    <item>
+     <widget class="QGroupBox" name="workflowGroupBox">
+      <property name="title">
+       <string>Workflow</string>
+      </property>
+      <layout class="QVBoxLayout" name="workflowLayout">
+       <item>
+        <widget class="QComboBox" name="workflowComboBox"/>
+       </item>
+       <item>
+        <widget class="QLabel" name="workflowMaturityLabel">
+         <property name="text">
+          <string>Select a workflow.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="workflowDescriptionLabel">
+         <property name="text">
+          <string/>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
     <item>
      <widget class="QGroupBox" name="layersGroupBox">
       <property name="title">

@@ -120,3 +120,5 @@ The plugin should eventually expose modes similar to:
 The first two modes are the production priority. The last two should stay clearly marked as experimental until they pass stronger QA.
 
 The code-level registry for these modes lives in `forest_labeler_core/workflows.py`. UI controls should use that registry instead of hard-coding workflow labels or maturity states.
+
+The dock UI now reads from that registry so users can see workflow mode, maturity, write behavior, and experimental warnings before a tool is wired in.

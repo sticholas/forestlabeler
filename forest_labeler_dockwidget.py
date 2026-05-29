@@ -34,6 +34,7 @@ from .forest_labeler_core.config import (
     TARGET_LAYER_NAME,
 )
 from .forest_labeler_core.layer_validation import validate_plugin_layers
+from .forest_labeler_core.workflows import list_workflows
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'forest_labeler_dockwidget_base.ui'))
@@ -53,6 +54,8 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self._populate_workflows()
+        self.workflowComboBox.currentIndexChanged.connect(self._update_workflow_details)
         self.refreshLayersButton.clicked.connect(self.refresh_layers)
         self.validateProjectButton.clicked.connect(self.validate_project)
         self.refresh_layers()
@@ -112,6 +115,37 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self._push_message("Forest Labeler validation failed.", Qgis.Warning)
 
         self.statusTextEdit.setPlainText("\n".join(lines))
+
+    def _populate_workflows(self):
+        self.workflowComboBox.blockSignals(True)
+        self.workflowComboBox.clear()
+        for workflow in list_workflows(include_experimental=True):
+            self.workflowComboBox.addItem(workflow.label, workflow.key)
+        self.workflowComboBox.blockSignals(False)
+        self._update_workflow_details()
+
+    def _current_workflow(self):
+        workflow_key = self.workflowComboBox.currentData()
+        for workflow in list_workflows(include_experimental=True):
+            if workflow.key == workflow_key:
+                return workflow
+        return None
+
+    def _update_workflow_details(self):
+        workflow = self._current_workflow()
+        if workflow is None:
+            self.workflowMaturityLabel.setText("Select a workflow.")
+            self.workflowDescriptionLabel.setText("")
+            return
+
+        maturity = "Experimental" if workflow.is_experimental else "Production target"
+        write_behavior = "Writes data" if workflow.can_write_data else "Validation only"
+        self.workflowMaturityLabel.setText(f"{maturity} - {write_behavior}")
+
+        details = workflow.purpose
+        if workflow.experimental_warning:
+            details = details + "\n" + workflow.experimental_warning
+        self.workflowDescriptionLabel.setText(details)
 
     def _populate_combo(self, combo, layers, preferred_name, allow_none):
         combo.blockSignals(True)

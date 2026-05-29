@@ -162,3 +162,8 @@ Ninth migration slice:
 
 - `forest_labeler_core/workflows.py` turns product tracks into code-level workflow metadata.
 - `unit_tests/test_workflows.py` covers production priorities, experimental filtering, unknown workflows, and confirmation requirements.
+
+Tenth migration slice:
+
+- The dock workflow selector now reads from `forest_labeler_core/workflows.py`.
+- Users can see workflow maturity, write behavior, and experimental warnings before individual tools are wired in.
