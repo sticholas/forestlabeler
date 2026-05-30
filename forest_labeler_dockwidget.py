@@ -35,7 +35,11 @@ from .forest_labeler_core.config import (
     TARGET_LAYER_NAME,
 )
 from .forest_labeler_core.layer_validation import validate_workflow_layers
-from .forest_labeler_core.canopy_review import format_canopy_review_summary
+from .forest_labeler_core.canopy_review import (
+    CANOPY_REVIEW_FILTER_ATTENTION,
+    CANOPY_REVIEW_FILTER_UNREVIEWED,
+    format_canopy_review_summary,
+)
 from .forest_labeler_core.training_square import (
     build_training_shape_parameters,
     list_training_polygon_presets,
@@ -54,6 +58,7 @@ from .forest_labeler_qgis.canopy_review import (
     best_canopy_layer_recommendation,
     canopy_layer_quality_insight_lines,
     mark_selected_canopies,
+    select_canopies_by_review_filter,
     summarize_canopy_layer_reviews,
 )
 from .forest_labeler_qgis.canopy_schema import repair_canopy_schema
@@ -101,6 +106,12 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.repairCanopySchemaButton.clicked.connect(self._repair_canopy_schema)
         self.summarizeCanopyReviewsButton.clicked.connect(self._summarize_canopy_reviews)
         self.useBestCanopyToolButton.clicked.connect(self._use_best_canopy_tool)
+        self.selectUnreviewedCanopiesButton.clicked.connect(
+            lambda: self._select_canopies_by_review_filter(CANOPY_REVIEW_FILTER_UNREVIEWED)
+        )
+        self.selectAttentionCanopiesButton.clicked.connect(
+            lambda: self._select_canopies_by_review_filter(CANOPY_REVIEW_FILTER_ATTENTION)
+        )
         self.markCanopyAcceptedButton.clicked.connect(
             lambda: self._mark_selected_canopies(CANOPY_REVIEW_ACCEPTED)
         )
@@ -204,6 +215,8 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.repairCanopySchemaButton.setProperty("buttonRole", "secondary")
         self.summarizeCanopyReviewsButton.setProperty("buttonRole", "secondary")
         self.useBestCanopyToolButton.setProperty("buttonRole", "secondary")
+        self.selectUnreviewedCanopiesButton.setProperty("buttonRole", "secondary")
+        self.selectAttentionCanopiesButton.setProperty("buttonRole", "secondary")
         self.markCanopyAcceptedButton.setProperty("buttonRole", "secondary")
         self.markCanopyRejectedButton.setProperty("buttonRole", "secondary")
         self.markCanopyUnsureButton.setProperty("buttonRole", "secondary")
@@ -567,6 +580,23 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         )
         self.statusTextEdit.setVisible(True)
         self._push_message("Best reviewed canopy tool setting applied.", Qgis.Success)
+
+    def _select_canopies_by_review_filter(self, review_filter):
+        result = select_canopies_by_review_filter(
+            self._current_layer(self.targetLayerComboBox),
+            review_filter,
+        )
+        if result.ok:
+            label = "unreviewed" if review_filter == CANOPY_REVIEW_FILTER_UNREVIEWED else "attention"
+            self.statusSummaryLabel.setText(f"Selected {result.selected_count} {label} canopy/canopies.")
+            self.statusTextEdit.clear()
+            self.statusTextEdit.setVisible(False)
+            self._push_message("Canopy QA selection updated.", Qgis.Info)
+        else:
+            self.statusSummaryLabel.setText("Could not select canopy QA features.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors + result.warnings))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy QA selection failed.", Qgis.Warning)
 
     def _request_training_polygon(self):
         training_square_index = self.workflowComboBox.findData(WORKFLOW_CREATE_TRAINING_SQUARE)

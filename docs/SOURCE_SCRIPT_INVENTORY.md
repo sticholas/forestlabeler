@@ -310,3 +310,9 @@ Thirty-fifth migration slice:
 
 - Label Canopy now auto-populates optional `num_trees` metadata with `1`, matching the one-tree-per-press-hold labeling workflow.
 - Canopy schema repair and validation now include `num_trees` as a recommended field.
+
+Thirty-sixth migration slice:
+
+- Label Canopy now has QA selection controls for `Select Unreviewed` and `Select Attention`.
+- `Select Attention` finds canopies marked rejected or unsure, making manual press-hold verification faster.
+- Selection helpers do not require edit mode because they only update the active feature selection.

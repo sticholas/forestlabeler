@@ -9,6 +9,8 @@ REVIEW_STATUS_ACCEPTED = "accepted"
 REVIEW_STATUS_REJECTED = "rejected"
 REVIEW_STATUS_UNSURE = "unsure"
 REVIEW_STATUS_UNREVIEWED = "unreviewed"
+CANOPY_REVIEW_FILTER_UNREVIEWED = "unreviewed"
+CANOPY_REVIEW_FILTER_ATTENTION = "attention"
 
 REVIEWED_FLAG_BY_STATUS = {
     REVIEW_STATUS_ACCEPTED: 1,
@@ -76,6 +78,15 @@ def normalize_canopy_review_status(status, reviewed=None):
     if reviewed_value < 0:
         return REVIEW_STATUS_REJECTED
     return REVIEW_STATUS_UNREVIEWED
+
+
+def canopy_review_status_matches_filter(status, reviewed, review_filter):
+    normalized = normalize_canopy_review_status(status, reviewed)
+    if review_filter == CANOPY_REVIEW_FILTER_UNREVIEWED:
+        return normalized == REVIEW_STATUS_UNREVIEWED
+    if review_filter == CANOPY_REVIEW_FILTER_ATTENTION:
+        return normalized in {REVIEW_STATUS_REJECTED, REVIEW_STATUS_UNSURE}
+    raise ValueError("Unknown canopy review filter: " + str(review_filter))
 
 
 def summarize_canopy_reviews(records):

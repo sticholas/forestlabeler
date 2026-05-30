@@ -5,11 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..forest_labeler_core.canopy_review import (
+    CANOPY_REVIEW_FILTER_ATTENTION,
+    CANOPY_REVIEW_FILTER_UNREVIEWED,
     REVIEW_STATUS_ACCEPTED,
     REVIEW_STATUS_REJECTED,
     REVIEW_STATUS_UNSURE,
     REVIEWED_FLAG_BY_STATUS,
     best_canopy_tool_recommendation,
+    canopy_review_status_matches_filter,
     canopy_quality_insight_lines,
     summarize_canopy_reviews,
 )
@@ -19,6 +22,14 @@ from ..forest_labeler_core.canopy_review import (
 class CanopyReviewUpdateResult:
     ok: bool
     updated_count: int
+    errors: tuple
+    warnings: tuple
+
+
+@dataclass(frozen=True)
+class CanopySelectionResult:
+    ok: bool
+    selected_count: int
     errors: tuple
     warnings: tuple
 
@@ -102,6 +113,34 @@ def best_canopy_layer_recommendation(layer, min_reviewed=3):
     if layer is None:
         raise ValueError("Select a target canopy polygon layer.")
     return best_canopy_tool_recommendation(_canopy_review_records(layer), min_reviewed=min_reviewed)
+
+
+def select_canopies_by_review_filter(layer, review_filter):
+    if layer is None:
+        return CanopySelectionResult(False, 0, ("Select a target canopy polygon layer.",), ())
+    if review_filter not in {CANOPY_REVIEW_FILTER_UNREVIEWED, CANOPY_REVIEW_FILTER_ATTENTION}:
+        return CanopySelectionResult(False, 0, ("Unknown canopy review filter.",), ())
+
+    reviewed_index = layer.fields().indexOf("reviewed")
+    status_index = layer.fields().indexOf("review_status")
+    if reviewed_index == -1 and status_index == -1:
+        return CanopySelectionResult(
+            False,
+            0,
+            ("Missing review field(s): reviewed or review_status.",),
+            (),
+        )
+
+    selected_ids = []
+    for feature in layer.getFeatures():
+        reviewed = feature[reviewed_index] if reviewed_index != -1 else None
+        status = feature[status_index] if status_index != -1 else None
+        if canopy_review_status_matches_filter(status, reviewed, review_filter):
+            selected_ids.append(feature.id())
+
+    layer.selectByIds(selected_ids)
+    layer.triggerRepaint()
+    return CanopySelectionResult(True, len(selected_ids), (), ())
 
 
 def _canopy_review_records(layer):
