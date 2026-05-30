@@ -47,6 +47,8 @@ Manual QGIS checks should record:
 - actual result
 - screenshots when the result is visual
 
+Track A canopy verification should use `docs/TRACK_A_QGIS_VERIFICATION.md` so plugin loading, validation, canopy creation, metadata, species decisions, review controls, and QA selection are checked consistently before closing production canopy work.
+
 ## Phase 1 Minimum Check
 
 - Plugin imports without traceback.

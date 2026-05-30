@@ -93,7 +93,7 @@ Exit gate:
 - User can create a canopy polygon through the plugin.
 - Species conflicts block or warn as configured.
 - Feature writes use the controlled writer only.
-- Manual QGIS verification is recorded.
+- Manual QGIS verification is recorded using `docs/TRACK_A_QGIS_VERIFICATION.md`.
 
 ### Phase 3: Track A User Controls And Productivity
 
