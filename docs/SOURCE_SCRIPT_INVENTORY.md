@@ -305,3 +305,8 @@ Thirty-fourth migration slice:
 - Canopy features now optionally store the crown tightness that produced them, alongside mode, radius, refinement, and review fields.
 - Label Canopy now has schema repair, review actions, review summary, quality insights, and `Use Best Canopy Tool` controls.
 - Canopy quality insights group reviewed crowns by mode and tightness so we can evaluate which press-hold settings are producing the best tree crowns.
+
+Thirty-fifth migration slice:
+
+- Label Canopy now auto-populates optional `num_trees` metadata with `1`, matching the one-tree-per-press-hold labeling workflow.
+- Canopy schema repair and validation now include `num_trees` as a recommended field.

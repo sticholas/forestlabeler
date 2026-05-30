@@ -31,6 +31,7 @@ class CanopyAttributeTest(unittest.TestCase):
                 "apex_h",
                 "mode",
                 "tightness",
+                "num_trees",
                 "species",
                 "reviewed",
                 "review_status",
@@ -45,6 +46,7 @@ class CanopyAttributeTest(unittest.TestCase):
         self.assertEqual(plan.values["area_m2"], 41.99)
         self.assertEqual(plan.values["apex_h"], 12.35)
         self.assertEqual(plan.values["tightness"], 11)
+        self.assertEqual(plan.values["num_trees"], 1)
         self.assertEqual(plan.values["species"], "MAM")
         self.assertEqual(plan.values["review_status"], "unreviewed")
         self.assertEqual(plan.skipped_fields, ())

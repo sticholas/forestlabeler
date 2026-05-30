@@ -14,6 +14,7 @@ TARGET_RECOMMENDED_FIELDS = (
     "apex_h",
     "mode",
     "tightness",
+    "num_trees",
     "reviewed",
     "review_status",
     "review_note",
