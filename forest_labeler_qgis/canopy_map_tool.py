@@ -7,10 +7,11 @@ from dataclasses import dataclass
 from qgis.PyQt.QtCore import QTimer, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QMessageBox
-from qgis.core import QgsCoordinateTransform, QgsGeometry, QgsPointXY, QgsProject, QgsWkbTypes
+from qgis.core import QgsCoordinateTransform, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsWkbTypes
 from qgis.gui import QgsMapTool, QgsRubberBand
 
 from ..forest_labeler_core.canopy_presets import build_canopy_parameters
+from ..forest_labeler_core.raster_sources import is_probable_ortho_source
 from .canopy_service import CanopyCreationRequest, create_canopy_feature
 from .crown_preview_service import (
     CrownPreviewRequest,
@@ -133,6 +134,8 @@ class CanopyLabelMapTool(QgsMapTool):
                 refined=1 if build_result is not None and build_result.refined else 0,
                 apex_height_m=build_result.apex_height_m if build_result is not None else None,
                 species_layer=self.settings.species_layer,
+                chm_id=self._layer_source(self.settings.chm_layer),
+                ortho_id=self._find_ortho_source(self.center_project),
             )
         )
 
@@ -239,3 +242,28 @@ class CanopyLabelMapTool(QgsMapTool):
             return QgsPointXY(point)
         transform = QgsCoordinateTransform(source_crs, target_crs, QgsProject.instance())
         return transform.transform(QgsPointXY(point))
+
+    def _layer_source(self, layer):
+        if layer is None:
+            return None
+        return layer.source()
+
+    def _find_ortho_source(self, center_project):
+        for layer in QgsProject.instance().layerTreeRoot().layerOrder():
+            if not isinstance(layer, QgsRasterLayer):
+                continue
+            if not is_probable_ortho_source(
+                layer.name(),
+                layer.source(),
+                layer.providerType(),
+                excluded_names={"CAH_LandCover", "chm", "canopy height model"},
+            ):
+                continue
+            center_layer = self._transform_point(
+                center_project,
+                self.canvas.mapSettings().destinationCrs(),
+                layer.crs(),
+            )
+            if layer.extent().contains(center_layer):
+                return layer.source()
+        return None

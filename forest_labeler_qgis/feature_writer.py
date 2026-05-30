@@ -51,6 +51,7 @@ def add_canopy_feature(
     refined,
     ortho_id=None,
     reviewed=0,
+    chm_id=None,
     require_editable=True,
 ):
     """Add a canopy feature to a target layer through a bounded write path."""
@@ -86,6 +87,7 @@ def add_canopy_feature(
             species=species,
             reviewed=reviewed,
             refined=refined,
+            chm_id=chm_id,
             ortho_id=ortho_id,
         ),
         layer_field_names(target_layer),

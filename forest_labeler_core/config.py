@@ -19,5 +19,6 @@ TARGET_RECOMMENDED_FIELDS = (
     "review_status",
     "review_note",
     "refined",
+    "chm_id",
     "ortho_id",
 )

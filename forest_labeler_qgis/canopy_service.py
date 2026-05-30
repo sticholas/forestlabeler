@@ -24,6 +24,7 @@ class CanopyCreationRequest:
     apex_height_m: float | None = None
     species_layer: object | None = None
     species_code_field: str = SPECIES_CODE_FIELD
+    chm_id: str | None = None
     ortho_id: str | None = None
     reviewed: int = 0
     block_multiple_species: bool = True
@@ -92,6 +93,7 @@ def create_canopy_feature(request: CanopyCreationRequest):
         crown_tightness=request.crown_tightness,
         species=species_value,
         refined=request.refined,
+        chm_id=request.chm_id,
         ortho_id=request.ortho_id,
         reviewed=request.reviewed,
         require_editable=request.require_editable,

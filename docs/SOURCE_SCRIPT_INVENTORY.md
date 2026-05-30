@@ -316,3 +316,9 @@ Thirty-sixth migration slice:
 - Label Canopy now has QA selection controls for `Select Unreviewed` and `Select Attention`.
 - `Select Attention` finds canopies marked rejected or unsure, making manual press-hold verification faster.
 - Selection helpers do not require edit mode because they only update the active feature selection.
+
+Thirty-seventh migration slice:
+
+- Label Canopy now records optional source provenance for generated crowns through `chm_id` and `ortho_id`.
+- The CHM source comes from the selected CHM raster, and the ortho source is inferred from the visible project raster covering the clicked point.
+- Canopy schema repair and validation now include `chm_id` as recommended metadata.

@@ -32,6 +32,7 @@ CANOPY_FIELD_SPECS = (
     CanopyFieldSpec("review_status", "string", length=40),
     CanopyFieldSpec("review_note", "string", length=254),
     CanopyFieldSpec("refined", "int"),
+    CanopyFieldSpec("chm_id", "string", length=254),
     CanopyFieldSpec("ortho_id", "string", length=254),
 )
 
@@ -51,6 +52,7 @@ class CanopyAttributeInputs:
     reviewed: int = 0
     review_status: str = "unreviewed"
     refined: int = 0
+    chm_id: str | None = None
     ortho_id: str | None = None
 
 
@@ -76,6 +78,7 @@ def build_canopy_attribute_plan(inputs: CanopyAttributeInputs, available_fields)
         "reviewed": inputs.reviewed,
         "review_status": inputs.review_status,
         "refined": inputs.refined,
+        "chm_id": inputs.chm_id,
         "ortho_id": inputs.ortho_id,
     }
 

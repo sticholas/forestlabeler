@@ -21,6 +21,7 @@ class CanopyAttributeTest(unittest.TestCase):
                 reviewed=0,
                 review_status="unreviewed",
                 refined=1,
+                chm_id="X:/rasters/chm.tif",
                 ortho_id="X:/imagery/ortho.tif",
             ),
             available_fields={
@@ -36,6 +37,7 @@ class CanopyAttributeTest(unittest.TestCase):
                 "reviewed",
                 "review_status",
                 "refined",
+                "chm_id",
                 "ortho_id",
             },
         )
@@ -49,6 +51,8 @@ class CanopyAttributeTest(unittest.TestCase):
         self.assertEqual(plan.values["num_trees"], 1)
         self.assertEqual(plan.values["species"], "MAM")
         self.assertEqual(plan.values["review_status"], "unreviewed")
+        self.assertEqual(plan.values["chm_id"], "X:/rasters/chm.tif")
+        self.assertEqual(plan.values["ortho_id"], "X:/imagery/ortho.tif")
         self.assertEqual(plan.skipped_fields, ())
 
     def test_records_skipped_optional_fields(self):
