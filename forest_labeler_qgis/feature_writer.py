@@ -16,6 +16,10 @@ from ..forest_labeler_core.training_shape_attributes import (
     TrainingShapeAttributeInputs,
     build_training_shape_attribute_plan,
 )
+from ..forest_labeler_core.write_safety import (
+    WritePreflightInputs,
+    validate_feature_write_preflight,
+)
 
 
 @dataclass(frozen=True)
@@ -55,23 +59,20 @@ def add_canopy_feature(
     require_editable=True,
 ):
     """Add a canopy feature to a target layer through a bounded write path."""
-    errors = []
-    warnings = []
+    preflight = _feature_write_preflight(
+        target_layer,
+        geometry,
+        layer_label="target canopy polygon layer",
+        require_editable=require_editable,
+    )
+    warnings = list(preflight.warnings)
 
-    if target_layer is None:
-        errors.append("Target canopy layer is not selected.")
-    elif require_editable and not target_layer.isEditable():
-        errors.append(f"'{target_layer.name()}' must be in edit mode before adding canopies.")
-
-    if geometry is None or geometry.isEmpty():
-        errors.append("Canopy geometry is empty and cannot be written.")
-
-    if errors:
+    if not preflight.ok:
         return FeatureWriteResult(
             ok=False,
             feature_id=None,
             attribute_plan=None,
-            errors=tuple(errors),
+            errors=tuple(preflight.errors),
             warnings=tuple(warnings),
         )
 
@@ -105,12 +106,26 @@ def add_canopy_feature(
         if field_index != -1:
             feature[field_name] = value
 
-    if not target_layer.addFeature(feature):
+    command = _LayerEditCommand(target_layer, "Add Forest Labeler canopy")
+    try:
+        command.begin()
+        if not target_layer.addFeature(feature):
+            command.rollback()
+            return FeatureWriteResult(
+                ok=False,
+                feature_id=None,
+                attribute_plan=attribute_plan,
+                errors=("Could not add the canopy polygon to the target layer.",),
+                warnings=tuple(warnings),
+            )
+        command.commit()
+    except Exception as exc:
+        command.rollback()
         return FeatureWriteResult(
             ok=False,
             feature_id=None,
             attribute_plan=attribute_plan,
-            errors=("Could not add the canopy polygon to the target layer.",),
+            errors=(f"Could not add the canopy polygon to the target layer: {exc}",),
             warnings=tuple(warnings),
         )
 
@@ -149,23 +164,20 @@ def add_training_shape_feature(
     require_editable=True,
 ):
     """Add a training polygon feature through a bounded write path."""
-    errors = []
-    warnings = []
+    preflight = _feature_write_preflight(
+        target_layer,
+        geometry,
+        layer_label="target training polygon layer",
+        require_editable=require_editable,
+    )
+    warnings = list(preflight.warnings)
 
-    if target_layer is None:
-        errors.append("Target training polygon layer is not selected.")
-    elif require_editable and not target_layer.isEditable():
-        errors.append(f"'{target_layer.name()}' must be in edit mode before adding training polygons.")
-
-    if geometry is None or geometry.isEmpty():
-        errors.append("Training polygon geometry is empty and cannot be written.")
-
-    if errors:
+    if not preflight.ok:
         return FeatureWriteResult(
             ok=False,
             feature_id=None,
             attribute_plan=None,
-            errors=tuple(errors),
+            errors=tuple(preflight.errors),
             warnings=tuple(warnings),
         )
 
@@ -199,12 +211,26 @@ def add_training_shape_feature(
         if field_index != -1:
             feature[field_name] = value
 
-    if not target_layer.addFeature(feature):
+    command = _LayerEditCommand(target_layer, "Add Forest Labeler training polygon")
+    try:
+        command.begin()
+        if not target_layer.addFeature(feature):
+            command.rollback()
+            return FeatureWriteResult(
+                ok=False,
+                feature_id=None,
+                attribute_plan=attribute_plan,
+                errors=("Could not add the training polygon to the target layer.",),
+                warnings=tuple(warnings),
+            )
+        command.commit()
+    except Exception as exc:
+        command.rollback()
         return FeatureWriteResult(
             ok=False,
             feature_id=None,
             attribute_plan=attribute_plan,
-            errors=("Could not add the training polygon to the target layer.",),
+            errors=(f"Could not add the training polygon to the target layer: {exc}",),
             warnings=tuple(warnings),
         )
 
@@ -218,3 +244,58 @@ def add_training_shape_feature(
         errors=(),
         warnings=tuple(warnings),
     )
+
+
+def _feature_write_preflight(target_layer, geometry, *, layer_label, require_editable):
+    layer_selected = target_layer is not None
+    geometry_present = geometry is not None
+    geometry_empty = True
+    geometry_valid = None
+
+    if geometry_present:
+        geometry_empty = geometry.isEmpty()
+        geometry_valid = _geometry_is_valid(geometry)
+
+    return validate_feature_write_preflight(
+        WritePreflightInputs(
+            layer_label=layer_label,
+            layer_name=target_layer.name() if target_layer is not None else None,
+            layer_selected=layer_selected,
+            require_editable=require_editable,
+            is_editable=target_layer.isEditable() if target_layer is not None else False,
+            geometry_present=geometry_present,
+            geometry_empty=geometry_empty,
+            geometry_valid=geometry_valid,
+        )
+    )
+
+
+def _geometry_is_valid(geometry):
+    if hasattr(geometry, "isGeosValid"):
+        try:
+            return geometry.isGeosValid()
+        except Exception:
+            return None
+    return None
+
+
+class _LayerEditCommand:
+    def __init__(self, layer, label):
+        self.layer = layer
+        self.label = label
+        self.started = False
+
+    def begin(self):
+        if hasattr(self.layer, "beginEditCommand"):
+            self.layer.beginEditCommand(self.label)
+            self.started = True
+
+    def commit(self):
+        if self.started and hasattr(self.layer, "endEditCommand"):
+            self.layer.endEditCommand()
+            self.started = False
+
+    def rollback(self):
+        if self.started and hasattr(self.layer, "destroyEditCommand"):
+            self.layer.destroyEditCommand()
+            self.started = False

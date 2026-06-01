@@ -322,3 +322,9 @@ Thirty-seventh migration slice:
 - Label Canopy now records optional source provenance for generated crowns through `chm_id` and `ortho_id`.
 - The CHM source comes from the selected CHM raster, and the ortho source is inferred from the visible project raster covering the clicked point.
 - Canopy schema repair and validation now include `chm_id` as recommended metadata.
+
+Thirty-eighth migration slice:
+
+- Feature writes now run through a shared pure preflight that blocks missing layers, non-editable layers, empty geometry, and invalid geometry before touching QGIS edit buffers.
+- Canopy and Training Polygon feature adds are wrapped in QGIS edit commands, so failed writes can destroy the command instead of leaving a partial operation in the undo stack.
+- Write-safety preflight behavior is covered by unit tests outside QGIS.
