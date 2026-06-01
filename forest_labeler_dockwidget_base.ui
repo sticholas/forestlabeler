@@ -244,6 +244,13 @@
          </item>
         </layout>
        </item>
+       <item>
+        <widget class="QPushButton" name="rejectRemoveCanopiesButton">
+         <property name="text">
+          <string>Reject + Remove</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
     </item>

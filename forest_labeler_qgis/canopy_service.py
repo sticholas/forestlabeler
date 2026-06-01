@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..forest_labeler_core.config import SPECIES_CODE_FIELD
+from .canopy_attempt_log import log_created_canopy_attempt
 from .feature_writer import FeatureWriteResult, add_canopy_feature
 from .species_lookup import SpeciesLookupResult, lookup_species_for_polygon
 
@@ -101,6 +102,20 @@ def create_canopy_feature(request: CanopyCreationRequest):
 
     errors.extend(write_result.errors)
     warnings.extend(write_result.warnings)
+
+    log_result = log_created_canopy_attempt(
+        request,
+        CanopyCreationResult(
+            ok=write_result.ok and not errors,
+            feature_id=write_result.feature_id,
+            species_lookup=species_lookup,
+            write_result=write_result,
+            errors=tuple(errors),
+            warnings=tuple(warnings),
+        ),
+    )
+    if not log_result.ok:
+        warnings.extend(log_result.errors)
 
     return CanopyCreationResult(
         ok=write_result.ok and not errors,

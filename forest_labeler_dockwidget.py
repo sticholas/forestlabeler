@@ -58,6 +58,7 @@ from .forest_labeler_qgis.canopy_review import (
     best_canopy_layer_recommendation,
     canopy_layer_quality_insight_lines,
     mark_selected_canopies,
+    reject_and_remove_selected_canopies,
     select_canopies_by_review_filter,
     summarize_canopy_layer_reviews,
 )
@@ -122,6 +123,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.markCanopyUnsureButton.clicked.connect(
             lambda: self._mark_selected_canopies(CANOPY_REVIEW_UNSURE)
         )
+        self.rejectRemoveCanopiesButton.clicked.connect(self._reject_and_remove_selected_canopies)
         self.activateTrainingShapeButton.clicked.connect(self._request_training_polygon)
         self.repairTrainingPolygonSchemaButton.clicked.connect(self._repair_training_polygon_schema)
         self.summarizeTrainingPolygonReviewsButton.clicked.connect(self._summarize_training_polygon_reviews)
@@ -222,6 +224,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.markCanopyAcceptedButton.setProperty("buttonRole", "secondary")
         self.markCanopyRejectedButton.setProperty("buttonRole", "secondary")
         self.markCanopyUnsureButton.setProperty("buttonRole", "secondary")
+        self.rejectRemoveCanopiesButton.setProperty("buttonRole", "secondary")
         self.canopyReviewToolsCheckBox.setProperty("tone", "toggle")
         self.validateProjectButton.setProperty("buttonRole", "secondary")
         self.refreshLayersButton.setProperty("buttonRole", "secondary")
@@ -524,6 +527,38 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self.statusTextEdit.setVisible(True)
             self._push_message("Canopy review update failed.", Qgis.Warning)
 
+    def _reject_and_remove_selected_canopies(self):
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Reject And Remove Canopies",
+            (
+                "Log the selected canopy/canopies as rejected, then remove them from the target layer?\n\n"
+                "Use this instead of Ctrl+Z when you want bad attempts to teach the tool while keeping the layer clean."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        result = reject_and_remove_selected_canopies(
+            self._current_layer(self.targetLayerComboBox),
+            note=self.canopyReviewNoteLineEdit.text(),
+        )
+        if result.ok:
+            self.statusSummaryLabel.setText(
+                f"Rejected and removed {result.updated_count} canopy/canopies."
+            )
+            self.statusTextEdit.setPlainText("\n".join(result.warnings))
+            self.statusTextEdit.setVisible(bool(result.warnings))
+            self.canopyReviewNoteLineEdit.clear()
+            self._push_message("Rejected canopy attempt logged and removed.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Could not reject and remove selected canopies.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors + result.warnings))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Reject and remove failed.", Qgis.Warning)
+
     def _summarize_canopy_reviews(self):
         layer = self._current_layer(self.targetLayerComboBox)
         try:
@@ -601,6 +636,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.markCanopyAcceptedButton.setVisible(show_review)
         self.markCanopyRejectedButton.setVisible(show_review)
         self.markCanopyUnsureButton.setVisible(show_review)
+        self.rejectRemoveCanopiesButton.setVisible(show_review)
 
     def _select_canopies_by_review_filter(self, review_filter):
         result = select_canopies_by_review_filter(

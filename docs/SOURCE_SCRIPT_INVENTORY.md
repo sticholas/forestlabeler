@@ -334,3 +334,9 @@ Thirty-ninth migration slice:
 - Label Canopy now keeps the primary production path compact by hiding schema, review, QA selection, and recommendation controls behind a `Review tools` toggle.
 - The default canopy panel now emphasizes mode, tightness, and Start Label Canopy, reducing UI clutter during active labeling.
 - Review and QA controls remain available without changing workflow mode.
+
+Fortieth migration slice:
+
+- Label Canopy now writes a sidecar `forest_labeler_canopy_attempts.csv` attempt log in the QGIS project home, preserving mode/tightness context even if generated polygons are later removed.
+- Review tools now include `Reject + Remove`, which logs selected canopies as rejected and removes them from the clean target layer.
+- This closes the feedback bias where only kept/accepted crowns remained available for future setting evaluation.

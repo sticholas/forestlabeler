@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .canopy_attempt_log import log_removed_canopy_attempt
 from ..forest_labeler_core.canopy_review import (
     CANOPY_REVIEW_FILTER_ATTENTION,
     CANOPY_REVIEW_FILTER_UNREVIEWED,
@@ -97,6 +98,63 @@ def mark_selected_canopies(layer, status, note=None):
     )
 
 
+def reject_and_remove_selected_canopies(layer, note=None):
+    """Log selected canopies as rejected, then remove them from the target layer."""
+    errors = []
+    warnings = []
+
+    if layer is None:
+        errors.append("Select a target canopy polygon layer.")
+    elif not layer.isEditable():
+        errors.append(f"Turn editing on for '{layer.name()}' before removing rejected canopies.")
+    if errors:
+        return CanopyReviewUpdateResult(False, 0, tuple(errors), tuple(warnings))
+
+    selected_ids = layer.selectedFeatureIds()
+    if not selected_ids:
+        return CanopyReviewUpdateResult(
+            False,
+            0,
+            ("Select one or more canopy features to reject and remove.",),
+            tuple(warnings),
+        )
+
+    feature_by_id = {feature.id(): feature for feature in layer.getFeatures(selected_ids)}
+    removed_count = 0
+    command = _LayerEditCommand(layer, "Reject and remove Forest Labeler canopy")
+    command.begin()
+    try:
+        for feature_id in selected_ids:
+            feature = feature_by_id.get(feature_id)
+            if feature is None:
+                warnings.append(f"Could not read selected canopy feature {feature_id}.")
+                continue
+            log_result = log_removed_canopy_attempt(layer, feature, note=note)
+            if not log_result.ok:
+                warnings.extend(log_result.errors)
+            if not layer.deleteFeature(feature_id):
+                warnings.append(f"Could not remove canopy feature {feature_id}.")
+                continue
+            removed_count += 1
+        command.commit()
+    except Exception as exc:
+        command.rollback()
+        return CanopyReviewUpdateResult(
+            False,
+            removed_count,
+            (f"Could not reject and remove selected canopies: {exc}",),
+            tuple(warnings),
+        )
+
+    layer.triggerRepaint()
+    return CanopyReviewUpdateResult(
+        ok=removed_count > 0,
+        updated_count=removed_count,
+        errors=() if removed_count > 0 else ("No selected canopies were removed.",),
+        warnings=tuple(warnings),
+    )
+
+
 def summarize_canopy_layer_reviews(layer):
     if layer is None:
         raise ValueError("Select a target canopy polygon layer.")
@@ -160,3 +218,25 @@ def _canopy_review_records(layer):
             }
         )
     return records
+
+
+class _LayerEditCommand:
+    def __init__(self, layer, label):
+        self.layer = layer
+        self.label = label
+        self.started = False
+
+    def begin(self):
+        if hasattr(self.layer, "beginEditCommand"):
+            self.layer.beginEditCommand(self.label)
+            self.started = True
+
+    def commit(self):
+        if self.started and hasattr(self.layer, "endEditCommand"):
+            self.layer.endEditCommand()
+            self.started = False
+
+    def rollback(self):
+        if self.started and hasattr(self.layer, "destroyEditCommand"):
+            self.layer.destroyEditCommand()
+            self.started = False
