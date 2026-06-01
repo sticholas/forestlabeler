@@ -6,8 +6,9 @@ call this service instead of directly looking up species and writing features.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
+from ..forest_labeler_core.canopy_attempt_log import new_canopy_attempt_id
 from ..forest_labeler_core.config import SPECIES_CODE_FIELD
 from .canopy_attempt_log import log_created_canopy_attempt
 from .feature_writer import FeatureWriteResult, add_canopy_feature
@@ -28,6 +29,7 @@ class CanopyCreationRequest:
     chm_id: str | None = None
     ortho_id: str | None = None
     reviewed: int = 0
+    attempt_id: str | None = None
     block_multiple_species: bool = True
     warn_if_missing_species: bool = False
     require_editable: bool = True
@@ -47,6 +49,8 @@ def create_canopy_feature(request: CanopyCreationRequest):
     """Create a canopy feature using the shared Track A write path."""
     errors = []
     warnings = []
+    attempt_id = request.attempt_id or new_canopy_attempt_id()
+    request_with_attempt_id = replace(request, attempt_id=attempt_id)
 
     species_lookup = None
     species_value = None
@@ -89,6 +93,7 @@ def create_canopy_feature(request: CanopyCreationRequest):
         request.target_layer,
         request.geometry,
         seed_radius_m=request.seed_radius_m,
+        attempt_id=attempt_id,
         apex_height_m=request.apex_height_m,
         canopy_mode=request.canopy_mode,
         crown_tightness=request.crown_tightness,
@@ -104,7 +109,7 @@ def create_canopy_feature(request: CanopyCreationRequest):
     warnings.extend(write_result.warnings)
 
     log_result = log_created_canopy_attempt(
-        request,
+        request_with_attempt_id,
         CanopyCreationResult(
             ok=write_result.ok and not errors,
             feature_id=write_result.feature_id,

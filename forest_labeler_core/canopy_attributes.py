@@ -20,6 +20,7 @@ class CanopyFieldSpec:
 
 CANOPY_FIELD_SPECS = (
     CanopyFieldSpec("fid", "int"),
+    CanopyFieldSpec("attempt_id", "string", length=80),
     CanopyFieldSpec("radius_m", "double", precision=2),
     CanopyFieldSpec("diam_m", "double", precision=2),
     CanopyFieldSpec("area_m2", "double", precision=2),
@@ -43,6 +44,7 @@ CANOPY_RECOMMENDED_FIELDS = tuple(field_spec.name for field_spec in CANOPY_FIELD
 @dataclass(frozen=True)
 class CanopyAttributeInputs:
     next_fid: int | None
+    attempt_id: str | None
     seed_radius_m: float
     geometry_area_m2: float
     apex_height_m: float | None
@@ -67,6 +69,7 @@ def build_canopy_attribute_plan(inputs: CanopyAttributeInputs, available_fields)
     available = set(available_fields)
     desired = {
         "fid": inputs.next_fid,
+        "attempt_id": inputs.attempt_id,
         "radius_m": round(inputs.seed_radius_m, 2),
         "diam_m": round(inputs.seed_radius_m * 2.0, 2),
         "area_m2": round(inputs.geometry_area_m2, 2),

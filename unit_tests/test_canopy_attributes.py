@@ -12,6 +12,7 @@ class CanopyAttributeTest(unittest.TestCase):
         plan = build_canopy_attribute_plan(
             CanopyAttributeInputs(
                 next_fid=7,
+                attempt_id="canopy-abc123",
                 seed_radius_m=3.456,
                 geometry_area_m2=41.987,
                 apex_height_m=12.345,
@@ -26,6 +27,7 @@ class CanopyAttributeTest(unittest.TestCase):
             ),
             available_fields={
                 "fid",
+                "attempt_id",
                 "radius_m",
                 "diam_m",
                 "area_m2",
@@ -43,6 +45,7 @@ class CanopyAttributeTest(unittest.TestCase):
         )
 
         self.assertEqual(plan.values["fid"], 7)
+        self.assertEqual(plan.values["attempt_id"], "canopy-abc123")
         self.assertEqual(plan.values["radius_m"], 3.46)
         self.assertEqual(plan.values["diam_m"], 6.91)
         self.assertEqual(plan.values["area_m2"], 41.99)
@@ -59,6 +62,7 @@ class CanopyAttributeTest(unittest.TestCase):
         plan = build_canopy_attribute_plan(
             CanopyAttributeInputs(
                 next_fid=None,
+                attempt_id=None,
                 seed_radius_m=2,
                 geometry_area_m2=10,
                 apex_height_m=None,

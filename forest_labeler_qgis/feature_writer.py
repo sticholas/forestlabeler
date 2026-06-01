@@ -48,6 +48,7 @@ def add_canopy_feature(
     geometry,
     *,
     seed_radius_m,
+    attempt_id=None,
     apex_height_m,
     canopy_mode,
     crown_tightness=None,
@@ -80,6 +81,7 @@ def add_canopy_feature(
     attribute_plan = build_canopy_attribute_plan(
         CanopyAttributeInputs(
             next_fid=next_fid,
+            attempt_id=attempt_id,
             seed_radius_m=seed_radius_m,
             geometry_area_m2=geometry.area(),
             apex_height_m=apex_height_m,
