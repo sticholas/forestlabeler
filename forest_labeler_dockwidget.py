@@ -103,6 +103,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.refreshLayersButton.clicked.connect(self.refresh_layers)
         self.validateProjectButton.clicked.connect(self.validate_project)
         self.activateLabelingButton.clicked.connect(self._request_labeling)
+        self.canopyReviewToolsCheckBox.toggled.connect(self._update_canopy_review_controls)
         self.repairCanopySchemaButton.clicked.connect(self._repair_canopy_schema)
         self.summarizeCanopyReviewsButton.clicked.connect(self._summarize_canopy_reviews)
         self.useBestCanopyToolButton.clicked.connect(self._use_best_canopy_tool)
@@ -140,6 +141,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.squareAngleSpinBox.valueChanged.connect(self._update_training_square_summary)
         self.squareCustomSideLengthsLineEdit.textChanged.connect(self._update_training_square_summary)
         self._update_training_square_summary()
+        self._update_canopy_review_controls()
         self._update_training_advanced_controls()
         self.refresh_layers()
 
@@ -220,6 +222,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.markCanopyAcceptedButton.setProperty("buttonRole", "secondary")
         self.markCanopyRejectedButton.setProperty("buttonRole", "secondary")
         self.markCanopyUnsureButton.setProperty("buttonRole", "secondary")
+        self.canopyReviewToolsCheckBox.setProperty("tone", "toggle")
         self.validateProjectButton.setProperty("buttonRole", "secondary")
         self.refreshLayersButton.setProperty("buttonRole", "secondary")
         self.repairTrainingPolygonSchemaButton.setProperty("buttonRole", "secondary")
@@ -306,6 +309,12 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 color: #315d4c;
                 font-weight: 600;
                 spacing: 7px;
+            }
+            QCheckBox[tone="toggle"] {
+                background: #edf2ef;
+                border: 1px solid #cdd9d3;
+                border-radius: 7px;
+                padding: 7px 8px;
             }
             QPushButton[buttonRole="primary"] {
                 background: #245f49;
@@ -580,6 +589,18 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         )
         self.statusTextEdit.setVisible(True)
         self._push_message("Best reviewed canopy tool setting applied.", Qgis.Success)
+
+    def _update_canopy_review_controls(self):
+        show_review = self.canopyReviewToolsCheckBox.isChecked()
+        self.repairCanopySchemaButton.setVisible(show_review)
+        self.summarizeCanopyReviewsButton.setVisible(show_review)
+        self.useBestCanopyToolButton.setVisible(show_review)
+        self.selectUnreviewedCanopiesButton.setVisible(show_review)
+        self.selectAttentionCanopiesButton.setVisible(show_review)
+        self.canopyReviewNoteLineEdit.setVisible(show_review)
+        self.markCanopyAcceptedButton.setVisible(show_review)
+        self.markCanopyRejectedButton.setVisible(show_review)
+        self.markCanopyUnsureButton.setVisible(show_review)
 
     def _select_canopies_by_review_filter(self, review_filter):
         result = select_canopies_by_review_filter(

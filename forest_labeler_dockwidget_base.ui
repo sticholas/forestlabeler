@@ -161,6 +161,13 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="canopyReviewToolsCheckBox">
+         <property name="text">
+          <string>Review tools</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="repairCanopySchemaButton">
          <property name="text">
           <string>Add Canopy Metadata Fields</string>

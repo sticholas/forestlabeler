@@ -328,3 +328,9 @@ Thirty-eighth migration slice:
 - Feature writes now run through a shared pure preflight that blocks missing layers, non-editable layers, empty geometry, and invalid geometry before touching QGIS edit buffers.
 - Canopy and Training Polygon feature adds are wrapped in QGIS edit commands, so failed writes can destroy the command instead of leaving a partial operation in the undo stack.
 - Write-safety preflight behavior is covered by unit tests outside QGIS.
+
+Thirty-ninth migration slice:
+
+- Label Canopy now keeps the primary production path compact by hiding schema, review, QA selection, and recommendation controls behind a `Review tools` toggle.
+- The default canopy panel now emphasizes mode, tightness, and Start Label Canopy, reducing UI clutter during active labeling.
+- Review and QA controls remain available without changing workflow mode.
