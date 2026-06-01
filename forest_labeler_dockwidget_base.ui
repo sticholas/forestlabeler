@@ -6,21 +6,523 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>232</width>
-    <height>141</height>
+    <width>360</width>
+    <height>520</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Forest Labeler</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0">
-     <widget class="QLabel" name="label">
+   <layout class="QVBoxLayout" name="mainLayout">
+    <property name="spacing">
+     <number>8</number>
+    </property>
+    <property name="leftMargin">
+     <number>10</number>
+    </property>
+    <property name="topMargin">
+     <number>10</number>
+    </property>
+    <property name="rightMargin">
+     <number>10</number>
+    </property>
+    <property name="bottomMargin">
+     <number>10</number>
+    </property>
+    <item>
+     <widget class="QGroupBox" name="workflowGroupBox">
+      <property name="title">
+       <string>Workflow</string>
+      </property>
+      <layout class="QVBoxLayout" name="workflowLayout">
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <item>
+        <widget class="QComboBox" name="workflowComboBox"/>
+       </item>
+       <item>
+        <widget class="QLabel" name="workflowMaturityLabel">
+         <property name="text">
+          <string>Select a workflow.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="workflowDescriptionLabel">
+         <property name="text">
+          <string/>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="layersGroupBox">
+      <property name="title">
+       <string>Layers</string>
+      </property>
+      <layout class="QFormLayout" name="layersFormLayout">
+       <property name="horizontalSpacing">
+        <number>10</number>
+       </property>
+       <property name="verticalSpacing">
+        <number>8</number>
+       </property>
+       <item row="0" column="0">
+        <widget class="QLabel" name="chmLayerLabel">
+         <property name="text">
+          <string>CHM raster</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QComboBox" name="chmLayerComboBox"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="targetLayerLabel">
+         <property name="text">
+          <string>Target polygons</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QComboBox" name="targetLayerComboBox"/>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="speciesLayerLabel">
+         <property name="text">
+          <string>Species points</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QComboBox" name="speciesLayerComboBox"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="labelCanopyGroupBox">
+      <property name="title">
+       <string>Label Canopy</string>
+      </property>
+      <layout class="QVBoxLayout" name="labelCanopyLayout">
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <item>
+        <layout class="QFormLayout" name="labelCanopyFormLayout">
+         <item row="0" column="0">
+          <widget class="QLabel" name="canopyModeLabel">
+           <property name="text">
+            <string>Mode</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QComboBox" name="canopyModeComboBox"/>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="crownTightnessLabel">
+           <property name="text">
+            <string>Strength</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <layout class="QHBoxLayout" name="crownTightnessSliderLayout">
+           <property name="spacing">
+            <number>8</number>
+           </property>
+           <item>
+            <widget class="QSlider" name="crownTightnessSlider">
+             <property name="minimum">
+              <number>0</number>
+             </property>
+             <property name="maximum">
+              <number>100</number>
+             </property>
+             <property name="singleStep">
+              <number>5</number>
+             </property>
+             <property name="pageStep">
+              <number>5</number>
+             </property>
+             <property name="value">
+              <number>50</number>
+             </property>
+             <property name="tracking">
+              <bool>true</bool>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="tickPosition">
+              <enum>QSlider::TicksBelow</enum>
+             </property>
+             <property name="tickInterval">
+              <number>10</number>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="crownTightnessValueLabel">
+             <property name="minimumSize">
+              <size>
+               <width>58</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+             </property>
+             <property name="text">
+              <string>50%</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QPushButton" name="activateLabelingButton">
+         <property name="text">
+          <string>Start Label Canopy</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="canopyReviewToolsCheckBox">
+         <property name="text">
+          <string>Review tools</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="repairCanopySchemaButton">
+         <property name="text">
+          <string>Add Canopy Metadata Fields</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="summarizeCanopyReviewsButton">
+         <property name="text">
+          <string>Canopy Review Summary</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="useBestCanopyToolButton">
+         <property name="text">
+          <string>Use Best Canopy Tool</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="canopySelectionLayout">
+         <property name="spacing">
+          <number>6</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="selectUnreviewedCanopiesButton">
+           <property name="text">
+            <string>Select Unreviewed</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="selectAttentionCanopiesButton">
+           <property name="text">
+            <string>Select Attention</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="canopyReviewNoteLineEdit">
+         <property name="placeholderText">
+          <string>Optional review note for selected canopies</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="canopyReviewLayout">
+         <property name="spacing">
+          <number>6</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="markCanopyAcceptedButton">
+           <property name="text">
+            <string>Accept</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="markCanopyRejectedButton">
+           <property name="text">
+            <string>Reject</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="markCanopyUnsureButton">
+           <property name="text">
+            <string>Unsure</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QPushButton" name="rejectRemoveCanopiesButton">
+         <property name="text">
+          <string>Reject + Remove</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="trainingSquareGroupBox">
+      <property name="title">
+       <string>Training Polygon</string>
+      </property>
+      <layout class="QVBoxLayout" name="trainingSquareLayout">
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <item>
+        <layout class="QFormLayout" name="trainingSquareFormLayout">
+         <item row="0" column="0">
+          <widget class="QLabel" name="squareTargetLayerLabel">
+           <property name="text">
+            <string>Target layer</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QComboBox" name="squareTargetLayerComboBox"/>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="trainingPolygonPresetLabel">
+           <property name="text">
+            <string>Preset</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QComboBox" name="trainingPolygonPresetComboBox"/>
+         </item>
+         <item row="2" column="0">
+         <widget class="QLabel" name="squareSegmentLengthLabel">
+           <property name="text">
+            <string>Side length (m)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QDoubleSpinBox" name="squareSegmentLengthSpinBox">
+           <property name="minimum">
+            <double>0.100000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>10000.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>10.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="squareVertexCountLabel">
+           <property name="text">
+            <string>Vertices</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QSpinBox" name="squareVertexCountSpinBox">
+           <property name="minimum">
+            <number>3</number>
+           </property>
+           <property name="maximum">
+            <number>64</number>
+           </property>
+           <property name="value">
+            <number>4</number>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="0">
+          <widget class="QLabel" name="squareAngleLabel">
+           <property name="text">
+            <string>Angle</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <widget class="QDoubleSpinBox" name="squareAngleSpinBox">
+           <property name="minimum">
+            <double>0.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>359.990000000000009</double>
+           </property>
+           <property name="value">
+            <double>0.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="0">
+          <widget class="QLabel" name="squareCustomSideLengthsLabel">
+           <property name="text">
+            <string>Custom side lengths</string>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="1">
+          <widget class="QLineEdit" name="squareCustomSideLengthsLineEdit">
+           <property name="placeholderText">
+            <string>100, 20, 100, 20</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="trainingAdvancedCheckBox">
+         <property name="text">
+          <string>Advanced options</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="repairTrainingPolygonSchemaButton">
+         <property name="text">
+          <string>Add Metadata Fields</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="summarizeTrainingPolygonReviewsButton">
+         <property name="text">
+          <string>Review Summary</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="useBestTrainingPolygonPatternButton">
+         <property name="text">
+          <string>Use Best Reviewed Pattern</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="activateTrainingShapeButton">
+         <property name="text">
+          <string>Start Training Polygon</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="trainingPolygonReviewNoteLineEdit">
+         <property name="placeholderText">
+          <string>Optional review note for selected polygons</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="trainingPolygonReviewLayout">
+         <property name="spacing">
+          <number>6</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="markTrainingPolygonAcceptedButton">
+           <property name="text">
+            <string>Accept</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="markTrainingPolygonRejectedButton">
+           <property name="text">
+            <string>Reject</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="markTrainingPolygonUnsureButton">
+           <property name="text">
+            <string>Unsure</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QLabel" name="trainingSquareSummaryLabel">
+         <property name="text">
+          <string>Default creates a four-sided polygon with equal side lengths.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="buttonLayout">
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <item>
+       <widget class="QPushButton" name="refreshLayersButton">
+        <property name="text">
+         <string>Refresh</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="validateProjectButton">
+        <property name="text">
+         <string>Validate</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QLabel" name="statusSummaryLabel">
       <property name="text">
-       <string>Replace this QLabel
-with the desired
-plugin content.</string>
+       <string>Project not validated.</string>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QTextEdit" name="statusTextEdit">
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+      <property name="placeholderText">
+       <string>Validation messages will appear here.</string>
       </property>
      </widget>
     </item>

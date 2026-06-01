@@ -57,3 +57,34 @@ For every plugin behavior change, record:
 - expected result
 - actual result
 - any screenshots if behavior is visual
+
+## Deploy To QGIS
+
+From Warp/WSL:
+
+```bash
+cd "/mnt/c/Users/Milo/Documents/Forest Labeler"
+bash scripts/deploy-plugin.sh
+```
+
+Restart QGIS or use Plugin Reloader after deployment.
+
+## Unit Tests
+
+QGIS-independent tests live in `unit_tests/` so they can run in ordinary Python:
+
+```bash
+python3 -m unittest discover -s unit_tests
+```
+
+The older Plugin Builder `test/` folder imports QGIS at package import time and should be treated as QGIS-environment test scaffolding until it is modernized.
+
+## Local Check Command
+
+Run the standard local checks before committing:
+
+```bash
+bash scripts/checks.sh
+```
+
+This currently runs Python syntax checks, QGIS-independent unit tests, and Qt UI XML parsing.

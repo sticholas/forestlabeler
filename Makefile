@@ -50,7 +50,7 @@ UI_FILES = forest_labeler_dockwidget_base.ui
 
 EXTRAS = metadata.txt icon.png
 
-EXTRA_DIRS =
+EXTRA_DIRS = forest_labeler_core forest_labeler_qgis
 
 COMPILED_RESOURCE_FILES = resources.py
 

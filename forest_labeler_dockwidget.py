@@ -24,8 +24,62 @@
 
 import os
 
-from qgis.PyQt import QtGui, QtWidgets, uic
+from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsVectorLayer
+from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
+
+from .forest_labeler_core.canopy_presets import (
+    CROWN_TIGHTNESS_PERCENT_STEP,
+    NORMAL_CROWN_TIGHTNESS,
+    VALID_CANOPY_MODES,
+    crown_tightness_from_percent,
+    crown_tightness_to_percent,
+)
+from .forest_labeler_core.config import (
+    CHM_LAYER_NAME,
+    SPECIES_POINT_LAYER_NAME,
+    TARGET_LAYER_NAME,
+)
+from .forest_labeler_core.layer_validation import validate_workflow_layers
+from .forest_labeler_core.canopy_review import (
+    CANOPY_REVIEW_FILTER_ATTENTION,
+    CANOPY_REVIEW_FILTER_UNREVIEWED,
+    format_canopy_review_summary,
+)
+from .forest_labeler_core.training_square import (
+    build_training_shape_parameters,
+    list_training_polygon_presets,
+    parse_side_lengths_text,
+    side_lengths_label,
+)
+from .forest_labeler_core.workflows import (
+    WORKFLOW_CREATE_TRAINING_SQUARE,
+    WORKFLOW_LABEL_CANOPY,
+    list_workflows,
+)
+from .forest_labeler_qgis.canopy_review import (
+    REVIEW_STATUS_ACCEPTED as CANOPY_REVIEW_ACCEPTED,
+    REVIEW_STATUS_REJECTED as CANOPY_REVIEW_REJECTED,
+    REVIEW_STATUS_UNSURE as CANOPY_REVIEW_UNSURE,
+    best_canopy_layer_recommendation,
+    canopy_layer_quality_insight_lines,
+    mark_selected_canopies,
+    reject_and_remove_selected_canopies,
+    select_canopies_by_review_filter,
+    summarize_canopy_layer_reviews,
+)
+from .forest_labeler_qgis.canopy_schema import repair_canopy_schema
+from .forest_labeler_qgis.training_polygon_schema import repair_training_polygon_schema
+from .forest_labeler_qgis.training_polygon_review import (
+    REVIEW_STATUS_ACCEPTED,
+    REVIEW_STATUS_REJECTED,
+    REVIEW_STATUS_UNSURE,
+    best_training_polygon_layer_recommendation,
+    mark_selected_training_polygons,
+    summarize_training_polygon_layer_reviews,
+    training_polygon_layer_quality_insight_lines,
+)
+from .forest_labeler_core.training_polygon_review import format_training_polygon_review_summary
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'forest_labeler_dockwidget_base.ui'))
@@ -34,17 +88,887 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
+    activateLabelingRequested = pyqtSignal()
+    activateTrainingShapeRequested = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, iface=None, parent=None):
         """Constructor."""
         super(forestlabelerDockWidget, self).__init__(parent)
+        self.iface = iface
         # Set up the user interface from Designer.
         # After setupUI you can access any designer object by doing
         # self.<objectname>, and you can use autoconnect slots - see
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self._apply_product_styling()
+        self._populate_canopy_modes()
+        self._populate_training_polygon_presets()
+        self._populate_workflows()
+        self.workflowComboBox.currentIndexChanged.connect(self._update_workflow_details)
+        self.trainingPolygonPresetComboBox.currentIndexChanged.connect(self._apply_training_polygon_preset)
+        self.crownTightnessSlider.valueChanged.connect(self._update_crown_tightness_display)
+        self.refreshLayersButton.clicked.connect(self.refresh_layers)
+        self.validateProjectButton.clicked.connect(self.validate_project)
+        self.activateLabelingButton.clicked.connect(self._request_labeling)
+        self.canopyReviewToolsCheckBox.toggled.connect(self._update_canopy_review_controls)
+        self.repairCanopySchemaButton.clicked.connect(self._repair_canopy_schema)
+        self.summarizeCanopyReviewsButton.clicked.connect(self._summarize_canopy_reviews)
+        self.useBestCanopyToolButton.clicked.connect(self._use_best_canopy_tool)
+        self.selectUnreviewedCanopiesButton.clicked.connect(
+            lambda: self._select_canopies_by_review_filter(CANOPY_REVIEW_FILTER_UNREVIEWED)
+        )
+        self.selectAttentionCanopiesButton.clicked.connect(
+            lambda: self._select_canopies_by_review_filter(CANOPY_REVIEW_FILTER_ATTENTION)
+        )
+        self.markCanopyAcceptedButton.clicked.connect(
+            lambda: self._mark_selected_canopies(CANOPY_REVIEW_ACCEPTED)
+        )
+        self.markCanopyRejectedButton.clicked.connect(
+            lambda: self._mark_selected_canopies(CANOPY_REVIEW_REJECTED)
+        )
+        self.markCanopyUnsureButton.clicked.connect(
+            lambda: self._mark_selected_canopies(CANOPY_REVIEW_UNSURE)
+        )
+        self.rejectRemoveCanopiesButton.clicked.connect(self._reject_and_remove_selected_canopies)
+        self.activateTrainingShapeButton.clicked.connect(self._request_training_polygon)
+        self.repairTrainingPolygonSchemaButton.clicked.connect(self._repair_training_polygon_schema)
+        self.summarizeTrainingPolygonReviewsButton.clicked.connect(self._summarize_training_polygon_reviews)
+        self.useBestTrainingPolygonPatternButton.clicked.connect(self._use_best_training_polygon_pattern)
+        self.markTrainingPolygonAcceptedButton.clicked.connect(
+            lambda: self._mark_selected_training_polygons(REVIEW_STATUS_ACCEPTED)
+        )
+        self.markTrainingPolygonRejectedButton.clicked.connect(
+            lambda: self._mark_selected_training_polygons(REVIEW_STATUS_REJECTED)
+        )
+        self.markTrainingPolygonUnsureButton.clicked.connect(
+            lambda: self._mark_selected_training_polygons(REVIEW_STATUS_UNSURE)
+        )
+        self.trainingAdvancedCheckBox.toggled.connect(self._update_training_advanced_controls)
+        self.squareSegmentLengthSpinBox.valueChanged.connect(self._update_training_square_summary)
+        self.squareVertexCountSpinBox.valueChanged.connect(self._update_training_square_summary)
+        self.squareAngleSpinBox.valueChanged.connect(self._update_training_square_summary)
+        self.squareCustomSideLengthsLineEdit.textChanged.connect(self._update_training_square_summary)
+        self._update_training_square_summary()
+        self._update_canopy_review_controls()
+        self._update_training_advanced_controls()
+        self.refresh_layers()
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
+
+    def refresh_layers(self):
+        """Load current QGIS project layers into the dock controls."""
+        self._populate_combo(
+            self.chmLayerComboBox,
+            self._raster_layers(),
+            preferred_name=CHM_LAYER_NAME,
+            allow_none=False,
+        )
+        self._populate_combo(
+            self.targetLayerComboBox,
+            self._vector_layers(Qgis.GeometryType.Polygon),
+            preferred_name=TARGET_LAYER_NAME,
+            allow_none=False,
+        )
+        self._populate_combo(
+            self.squareTargetLayerComboBox,
+            self._vector_layers(Qgis.GeometryType.Polygon),
+            preferred_name="training_squares",
+            allow_none=False,
+        )
+        self._populate_combo(
+            self.speciesLayerComboBox,
+            self._vector_layers(Qgis.GeometryType.Point),
+            preferred_name=SPECIES_POINT_LAYER_NAME,
+            allow_none=True,
+        )
+        self.statusSummaryLabel.setText("Project not validated.")
+        self.statusTextEdit.clear()
+        self.statusTextEdit.setVisible(False)
+
+    def validate_project(self):
+        """Validate selected layers and report whether labeling can start."""
+        workflow_key = self.workflowComboBox.currentData()
+        result = validate_workflow_layers(
+            workflow_key,
+            chm_layer=self._current_layer(self.chmLayerComboBox),
+            target_layer=self._target_layer_for_workflow(workflow_key),
+            species_layer=self._current_layer(self.speciesLayerComboBox),
+        )
+
+        lines = []
+        if result.errors:
+            lines.append("Errors:")
+            lines.extend(f"- {message}" for message in result.errors)
+        if result.warnings:
+            if lines:
+                lines.append("")
+            lines.append("Warnings:")
+            lines.extend(f"- {message}" for message in result.warnings)
+
+        if result.ok:
+            self.statusSummaryLabel.setText("Validation passed for selected workflow.")
+            self._push_message("Forest Labeler validation passed.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Validation failed. Fix project setup before labeling.")
+            self._push_message("Forest Labeler validation failed.", Qgis.Warning)
+
+        self.statusTextEdit.setPlainText("\n".join(lines))
+        self.statusTextEdit.setVisible(bool(lines))
+
+        return result
+
+    def _apply_product_styling(self):
+        self.activateLabelingButton.setProperty("buttonRole", "primary")
+        self.activateTrainingShapeButton.setProperty("buttonRole", "primary")
+        self.repairCanopySchemaButton.setProperty("buttonRole", "secondary")
+        self.summarizeCanopyReviewsButton.setProperty("buttonRole", "secondary")
+        self.useBestCanopyToolButton.setProperty("buttonRole", "secondary")
+        self.selectUnreviewedCanopiesButton.setProperty("buttonRole", "secondary")
+        self.selectAttentionCanopiesButton.setProperty("buttonRole", "secondary")
+        self.markCanopyAcceptedButton.setProperty("buttonRole", "secondary")
+        self.markCanopyRejectedButton.setProperty("buttonRole", "secondary")
+        self.markCanopyUnsureButton.setProperty("buttonRole", "secondary")
+        self.rejectRemoveCanopiesButton.setProperty("buttonRole", "secondary")
+        self.canopyReviewToolsCheckBox.setProperty("tone", "toggle")
+        self.validateProjectButton.setProperty("buttonRole", "secondary")
+        self.refreshLayersButton.setProperty("buttonRole", "secondary")
+        self.repairTrainingPolygonSchemaButton.setProperty("buttonRole", "secondary")
+        self.summarizeTrainingPolygonReviewsButton.setProperty("buttonRole", "secondary")
+        self.useBestTrainingPolygonPatternButton.setProperty("buttonRole", "secondary")
+        self.markTrainingPolygonAcceptedButton.setProperty("buttonRole", "secondary")
+        self.markTrainingPolygonRejectedButton.setProperty("buttonRole", "secondary")
+        self.markTrainingPolygonUnsureButton.setProperty("buttonRole", "secondary")
+        self.workflowMaturityLabel.setProperty("tone", "badge")
+        self.workflowDescriptionLabel.setProperty("tone", "muted")
+        self.trainingSquareSummaryLabel.setProperty("tone", "hint")
+        self.crownTightnessValueLabel.setProperty("tone", "metric")
+        self.statusSummaryLabel.setProperty("tone", "status")
+        self.statusTextEdit.setMinimumHeight(72)
+        self.statusTextEdit.setMaximumHeight(120)
+        self.statusTextEdit.setVisible(False)
+        self.setStyleSheet(
+            """
+            QWidget#dockWidgetContents {
+                background: #f6f8f7;
+                color: #15211d;
+                font-size: 12px;
+            }
+            QGroupBox {
+                background: #ffffff;
+                border: 1px solid #d8e2dd;
+                border-radius: 8px;
+                margin-top: 14px;
+                padding: 12px 9px 9px 9px;
+                font-weight: 600;
+                color: #18362d;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                top: 0px;
+                padding: 0 6px;
+                background: #f6f8f7;
+                color: #315d4c;
+            }
+            QLabel[tone="muted"] {
+                color: #62746d;
+            }
+            QLabel[tone="hint"] {
+                background: #eef6f1;
+                border: 1px solid #d5eadc;
+                border-radius: 6px;
+                padding: 7px 8px;
+                color: #315d4c;
+            }
+            QLabel[tone="metric"] {
+                background: #edf2ef;
+                border: 1px solid #cdd9d3;
+                border-radius: 6px;
+                padding: 5px 7px;
+                color: #244236;
+                font-weight: 700;
+            }
+            QLabel[tone="badge"] {
+                background: #e8f1ff;
+                border: 1px solid #c8dcff;
+                border-radius: 6px;
+                padding: 5px 8px;
+                color: #21466f;
+                font-weight: 600;
+            }
+            QLabel[tone="status"] {
+                background: #fffaf0;
+                border: 1px solid #ead9ad;
+                border-radius: 6px;
+                padding: 7px 8px;
+                color: #604b1a;
+                font-weight: 600;
+            }
+            QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit {
+                background: #ffffff;
+                border: 1px solid #cfd9d4;
+                border-radius: 6px;
+                padding: 5px 7px;
+                min-height: 22px;
+                selection-background-color: #2f7d5d;
+            }
+            QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus, QLineEdit:focus {
+                border: 1px solid #2f7d5d;
+            }
+            QSlider::groove:horizontal {
+                height: 6px;
+                background: #dce7e1;
+                border-radius: 3px;
+            }
+            QSlider::sub-page:horizontal {
+                background: #2f7d5d;
+                border-radius: 3px;
+            }
+            QSlider::handle:horizontal {
+                width: 18px;
+                height: 18px;
+                margin: -6px 0;
+                border-radius: 9px;
+                background: #ffffff;
+                border: 2px solid #245f49;
+            }
+            QSlider::handle:horizontal:hover {
+                border: 2px solid #2f7d5d;
+            }
+            QPushButton {
+                border-radius: 7px;
+                padding: 6px 10px;
+                font-weight: 600;
+                min-height: 22px;
+            }
+            QCheckBox {
+                color: #315d4c;
+                font-weight: 600;
+                spacing: 7px;
+            }
+            QCheckBox[tone="toggle"] {
+                background: #edf2ef;
+                border: 1px solid #cdd9d3;
+                border-radius: 7px;
+                padding: 7px 8px;
+            }
+            QPushButton[buttonRole="primary"] {
+                background: #245f49;
+                border: 1px solid #1e523f;
+                color: #ffffff;
+            }
+            QPushButton[buttonRole="primary"]:hover {
+                background: #2f7559;
+            }
+            QPushButton[buttonRole="secondary"] {
+                background: #edf2ef;
+                border: 1px solid #cdd9d3;
+                color: #244236;
+            }
+            QPushButton[buttonRole="secondary"]:hover {
+                background: #e2ebe6;
+            }
+            QTextEdit {
+                background: #ffffff;
+                border: 1px solid #d8e2dd;
+                border-radius: 8px;
+                padding: 8px;
+                color: #2c3834;
+            }
+            """
+        )
+
+    def selected_layers(self):
+        return (
+            self._current_layer(self.chmLayerComboBox),
+            self._current_layer(self.targetLayerComboBox),
+            self._current_layer(self.speciesLayerComboBox),
+        )
+
+    def selected_training_polygon_layer(self):
+        return self._current_layer(self.squareTargetLayerComboBox)
+
+    def canopy_settings(self):
+        return {
+            "canopy_mode": self.canopyModeComboBox.currentText(),
+            "crown_tightness": crown_tightness_from_percent(self.crownTightnessSlider.value()),
+        }
+
+    def training_polygon_settings(self):
+        params = build_training_shape_parameters(
+            self.squareSegmentLengthSpinBox.value(),
+            self.squareVertexCountSpinBox.value(),
+            self.squareAngleSpinBox.value(),
+            side_lengths=parse_side_lengths_text(self.squareCustomSideLengthsLineEdit.text()),
+        )
+        return {
+            "segment_length_m": params.segment_length_m,
+            "vertex_count": params.vertex_count,
+            "shape_name": params.shape_name,
+            "angle_deg": params.angle_deg,
+            "side_lengths_m": params.side_lengths_m,
+            "uses_custom_lengths": params.uses_custom_lengths,
+            "side_lengths_label": side_lengths_label(params),
+        }
+
+    def _populate_workflows(self):
+        self.workflowComboBox.blockSignals(True)
+        self.workflowComboBox.clear()
+        label_canopy_index = 0
+        for workflow in list_workflows(include_experimental=True):
+            self.workflowComboBox.addItem(workflow.label, workflow.key)
+            if workflow.key == WORKFLOW_LABEL_CANOPY:
+                label_canopy_index = self.workflowComboBox.count() - 1
+        self.workflowComboBox.setCurrentIndex(label_canopy_index)
+        self.workflowComboBox.blockSignals(False)
+        self._update_workflow_details()
+
+    def _populate_canopy_modes(self):
+        self.canopyModeComboBox.clear()
+        self.canopyModeComboBox.addItems(VALID_CANOPY_MODES)
+        default_index = self.canopyModeComboBox.findText("MIXED")
+        if default_index != -1:
+            self.canopyModeComboBox.setCurrentIndex(default_index)
+        self.crownTightnessSlider.setValue(crown_tightness_to_percent(NORMAL_CROWN_TIGHTNESS))
+        self._update_crown_tightness_display()
+
+    def _update_crown_tightness_display(self):
+        percent = self.crownTightnessSlider.value()
+        snapped_percent = round(percent / CROWN_TIGHTNESS_PERCENT_STEP) * CROWN_TIGHTNESS_PERCENT_STEP
+        if snapped_percent != percent:
+            self.crownTightnessSlider.blockSignals(True)
+            self.crownTightnessSlider.setValue(snapped_percent)
+            self.crownTightnessSlider.blockSignals(False)
+            percent = snapped_percent
+        tightness = crown_tightness_from_percent(percent)
+        self.crownTightnessValueLabel.setText(f"{percent}%")
+        self.crownTightnessSlider.setToolTip(
+            f"Crown strength {percent}% (engine tightness {tightness} of 21)."
+        )
+
+    def _populate_training_polygon_presets(self):
+        self.trainingPolygonPresetComboBox.blockSignals(True)
+        self.trainingPolygonPresetComboBox.clear()
+        default_index = 0
+        for preset in list_training_polygon_presets():
+            self.trainingPolygonPresetComboBox.addItem(preset.label, preset)
+            if preset.key == "square_100":
+                default_index = self.trainingPolygonPresetComboBox.count() - 1
+        self.trainingPolygonPresetComboBox.setCurrentIndex(default_index)
+        self.trainingPolygonPresetComboBox.blockSignals(False)
+        self._apply_training_polygon_preset()
+
+    def _apply_training_polygon_preset(self):
+        preset = self.trainingPolygonPresetComboBox.currentData()
+        if preset is None or preset.key == "custom":
+            self._update_training_square_summary()
+            return
+
+        self.squareSegmentLengthSpinBox.blockSignals(True)
+        self.squareVertexCountSpinBox.blockSignals(True)
+        self.squareCustomSideLengthsLineEdit.blockSignals(True)
+
+        self.squareSegmentLengthSpinBox.setValue(preset.segment_length_m)
+        self.squareVertexCountSpinBox.setValue(preset.vertex_count)
+        self.squareCustomSideLengthsLineEdit.setText(
+            ", ".join(f"{length:g}" for length in preset.side_lengths_m)
+            if preset.side_lengths_m
+            else ""
+        )
+
+        self.squareSegmentLengthSpinBox.blockSignals(False)
+        self.squareVertexCountSpinBox.blockSignals(False)
+        self.squareCustomSideLengthsLineEdit.blockSignals(False)
+        self._update_training_square_summary()
+
+    def _current_workflow(self):
+        workflow_key = self.workflowComboBox.currentData()
+        for workflow in list_workflows(include_experimental=True):
+            if workflow.key == workflow_key:
+                return workflow
+        return None
+
+    def _update_workflow_details(self):
+        workflow = self._current_workflow()
+        if workflow is None:
+            self.workflowMaturityLabel.setText("Select a workflow.")
+            self.workflowDescriptionLabel.setText("")
+            return
+
+        maturity = "Experimental" if workflow.is_experimental else "Production target"
+        write_behavior = "Writes data" if workflow.can_write_data else "Validation only"
+        self.workflowMaturityLabel.setText(f"{maturity} | {write_behavior}")
+
+        details = workflow.purpose
+        if workflow.readiness_note:
+            details = details + "\n" + workflow.readiness_note
+        if workflow.experimental_warning:
+            details = details + "\n" + workflow.experimental_warning
+        self.workflowDescriptionLabel.setText(details)
+        self._update_workflow_controls(workflow.key)
+
+    def _request_labeling(self):
+        if self.workflowComboBox.currentData() != WORKFLOW_LABEL_CANOPY:
+            label_canopy_index = self.workflowComboBox.findData(WORKFLOW_LABEL_CANOPY)
+            if label_canopy_index != -1:
+                self.workflowComboBox.setCurrentIndex(label_canopy_index)
+
+        result = self.validate_project()
+        if not result.ok:
+            return
+
+        self.activateLabelingRequested.emit()
+
+    def _repair_canopy_schema(self):
+        layer = self._current_layer(self.targetLayerComboBox)
+        if layer is None:
+            self._push_message("Select a target canopy polygon layer first.", Qgis.Warning)
+            return
+
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Add Canopy Metadata Fields",
+            (
+                f"Add missing optional Forest Labeler canopy fields to '{layer.name()}'?\n\n"
+                "This updates the selected canopy layer schema and keeps existing features."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        result = repair_canopy_schema(layer)
+        if result.ok and result.added_fields:
+            self.statusSummaryLabel.setText(f"Added {len(result.added_fields)} canopy field(s).")
+            self.statusTextEdit.setPlainText(", ".join(result.added_fields))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy metadata fields added.", Qgis.Success)
+        elif result.ok:
+            self.statusSummaryLabel.setText("Canopy metadata fields already exist.")
+            self.statusTextEdit.clear()
+            self.statusTextEdit.setVisible(False)
+            self._push_message("Canopy schema already looks ready.", Qgis.Info)
+        else:
+            self.statusSummaryLabel.setText("Could not update canopy schema.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy schema update failed.", Qgis.Warning)
+
+    def _mark_selected_canopies(self, status):
+        result = mark_selected_canopies(
+            self._current_layer(self.targetLayerComboBox),
+            status,
+            note=self.canopyReviewNoteLineEdit.text(),
+        )
+        if result.ok:
+            self.statusSummaryLabel.setText(
+                f"Marked {result.updated_count} selected canopy/canopies as {status}."
+            )
+            self.statusTextEdit.setPlainText("\n".join(result.warnings))
+            self.statusTextEdit.setVisible(bool(result.warnings))
+            self.canopyReviewNoteLineEdit.clear()
+            self._push_message("Canopy review status updated.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Could not update canopy review status.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors + result.warnings))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy review update failed.", Qgis.Warning)
+
+    def _reject_and_remove_selected_canopies(self):
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Reject And Remove Canopies",
+            (
+                "Log the selected canopy/canopies as rejected, then remove them from the target layer?\n\n"
+                "Use this instead of Ctrl+Z when you want bad attempts to teach the tool while keeping the layer clean."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        result = reject_and_remove_selected_canopies(
+            self._current_layer(self.targetLayerComboBox),
+            note=self.canopyReviewNoteLineEdit.text(),
+        )
+        if result.ok:
+            self.statusSummaryLabel.setText(
+                f"Rejected and removed {result.updated_count} canopy/canopies."
+            )
+            self.statusTextEdit.setPlainText("\n".join(result.warnings))
+            self.statusTextEdit.setVisible(bool(result.warnings))
+            self.canopyReviewNoteLineEdit.clear()
+            self._push_message("Rejected canopy attempt logged and removed.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Could not reject and remove selected canopies.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors + result.warnings))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Reject and remove failed.", Qgis.Warning)
+
+    def _summarize_canopy_reviews(self):
+        layer = self._current_layer(self.targetLayerComboBox)
+        try:
+            summary = summarize_canopy_layer_reviews(layer)
+            insight_lines = canopy_layer_quality_insight_lines(layer)
+        except ValueError as exc:
+            self.statusSummaryLabel.setText("Could not summarize canopy reviews.")
+            self.statusTextEdit.setPlainText(str(exc))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy review summary failed.", Qgis.Warning)
+            return
+
+        lines = format_canopy_review_summary(summary)
+        self.statusSummaryLabel.setText("Canopy review summary updated.")
+        self.statusTextEdit.setPlainText("\n".join(lines + ("",) + tuple(insight_lines)))
+        self.statusTextEdit.setVisible(True)
+        self._push_message("Canopy review summary updated.", Qgis.Info)
+
+    def _use_best_canopy_tool(self):
+        try:
+            recommendation = best_canopy_layer_recommendation(
+                self._current_layer(self.targetLayerComboBox)
+            )
+        except ValueError as exc:
+            self.statusSummaryLabel.setText("Could not find a reviewed canopy tool setting.")
+            self.statusTextEdit.setPlainText(str(exc))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy recommendation failed.", Qgis.Warning)
+            return
+
+        if recommendation is None:
+            self.statusSummaryLabel.setText("No reviewed canopy tool setting is ready yet.")
+            self.statusTextEdit.setPlainText(
+                "Review at least 3 canopies with the same mode and tightness before using a best tool setting."
+            )
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy recommendation needs more reviewed examples.", Qgis.Info)
+            return
+
+        accepted_pct = round(recommendation.accepted_rate * 100.0, 1)
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Use Best Canopy Tool",
+            (
+                "Apply this reviewed canopy setting to the Label Canopy controls?\n\n"
+                f"{recommendation.canopy_mode}, tightness {recommendation.crown_tightness}\n"
+                f"{accepted_pct}% accepted across {recommendation.reviewed_total} reviewed canopies."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.Yes,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        mode_index = self.canopyModeComboBox.findText(recommendation.canopy_mode)
+        if mode_index != -1:
+            self.canopyModeComboBox.setCurrentIndex(mode_index)
+        if recommendation.crown_tightness is not None:
+            self.crownTightnessSpinBox.setValue(recommendation.crown_tightness)
+        self.statusSummaryLabel.setText("Best reviewed canopy tool setting applied.")
+        self.statusTextEdit.setPlainText(
+            f"{recommendation.canopy_mode}, tightness {recommendation.crown_tightness}"
+        )
+        self.statusTextEdit.setVisible(True)
+        self._push_message("Best reviewed canopy tool setting applied.", Qgis.Success)
+
+    def _update_canopy_review_controls(self):
+        show_review = self.canopyReviewToolsCheckBox.isChecked()
+        self.repairCanopySchemaButton.setVisible(show_review)
+        self.summarizeCanopyReviewsButton.setVisible(show_review)
+        self.useBestCanopyToolButton.setVisible(show_review)
+        self.selectUnreviewedCanopiesButton.setVisible(show_review)
+        self.selectAttentionCanopiesButton.setVisible(show_review)
+        self.canopyReviewNoteLineEdit.setVisible(show_review)
+        self.markCanopyAcceptedButton.setVisible(show_review)
+        self.markCanopyRejectedButton.setVisible(show_review)
+        self.markCanopyUnsureButton.setVisible(show_review)
+        self.rejectRemoveCanopiesButton.setVisible(show_review)
+
+    def _select_canopies_by_review_filter(self, review_filter):
+        result = select_canopies_by_review_filter(
+            self._current_layer(self.targetLayerComboBox),
+            review_filter,
+        )
+        if result.ok:
+            label = "unreviewed" if review_filter == CANOPY_REVIEW_FILTER_UNREVIEWED else "attention"
+            self.statusSummaryLabel.setText(f"Selected {result.selected_count} {label} canopy/canopies.")
+            self.statusTextEdit.clear()
+            self.statusTextEdit.setVisible(False)
+            self._push_message("Canopy QA selection updated.", Qgis.Info)
+        else:
+            self.statusSummaryLabel.setText("Could not select canopy QA features.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors + result.warnings))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy QA selection failed.", Qgis.Warning)
+
+    def _request_training_polygon(self):
+        training_square_index = self.workflowComboBox.findData(WORKFLOW_CREATE_TRAINING_SQUARE)
+        if training_square_index != -1:
+            self.workflowComboBox.setCurrentIndex(training_square_index)
+
+        try:
+            self.training_polygon_settings()
+        except ValueError as exc:
+            self.statusSummaryLabel.setText("Training polygon settings need attention.")
+            self.statusTextEdit.setPlainText(str(exc))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Training polygon settings need attention.", Qgis.Warning)
+            return
+
+        result = self.validate_project()
+        if not result.ok:
+            return
+
+        self.activateTrainingShapeRequested.emit()
+
+    def _repair_training_polygon_schema(self):
+        layer = self.selected_training_polygon_layer()
+        if layer is None:
+            self._push_message("Select a Training Polygon target layer first.", Qgis.Warning)
+            return
+
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Add Training Polygon Fields",
+            (
+                f"Add missing optional Forest Labeler metadata fields to '{layer.name()}'?\n\n"
+                "This updates the selected layer schema and keeps existing fields and features."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        result = repair_training_polygon_schema(layer)
+        if result.ok and result.added_fields:
+            self.statusSummaryLabel.setText(f"Added {len(result.added_fields)} metadata field(s).")
+            self.statusTextEdit.setPlainText(", ".join(result.added_fields))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Training Polygon metadata fields added.", Qgis.Success)
+        elif result.ok:
+            self.statusSummaryLabel.setText("Training Polygon metadata fields already exist.")
+            self.statusTextEdit.clear()
+            self.statusTextEdit.setVisible(False)
+            self._push_message("Training Polygon schema already looks ready.", Qgis.Info)
+        else:
+            self.statusSummaryLabel.setText("Could not update Training Polygon schema.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Training Polygon schema update failed.", Qgis.Warning)
+
+    def _mark_selected_training_polygons(self, status):
+        layer = self.selected_training_polygon_layer()
+        result = mark_selected_training_polygons(
+            layer,
+            status,
+            note=self.trainingPolygonReviewNoteLineEdit.text(),
+        )
+        if result.ok:
+            self.statusSummaryLabel.setText(
+                f"Marked {result.updated_count} selected polygon(s) as {status}."
+            )
+            if result.warnings:
+                self.statusTextEdit.setPlainText("\n".join(result.warnings))
+                self.statusTextEdit.setVisible(True)
+            else:
+                self.statusTextEdit.clear()
+                self.statusTextEdit.setVisible(False)
+            self.trainingPolygonReviewNoteLineEdit.clear()
+            self._push_message("Training Polygon review status updated.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Could not update Training Polygon review status.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors + result.warnings))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Training Polygon review update failed.", Qgis.Warning)
+
+    def _summarize_training_polygon_reviews(self):
+        try:
+            summary = summarize_training_polygon_layer_reviews(self.selected_training_polygon_layer())
+        except ValueError as exc:
+            self.statusSummaryLabel.setText("Could not summarize Training Polygon reviews.")
+            self.statusTextEdit.setPlainText(str(exc))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Training Polygon review summary failed.", Qgis.Warning)
+            return
+
+        lines = format_training_polygon_review_summary(summary)
+        try:
+            insight_lines = training_polygon_layer_quality_insight_lines(
+                self.selected_training_polygon_layer()
+            )
+        except ValueError:
+            insight_lines = ()
+        self.statusSummaryLabel.setText("Training Polygon review summary updated.")
+        self.statusTextEdit.setPlainText("\n".join(lines + ("",) + tuple(insight_lines)))
+        self.statusTextEdit.setVisible(True)
+        self._push_message("Training Polygon review summary updated.", Qgis.Info)
+
+    def _use_best_training_polygon_pattern(self):
+        try:
+            recommendation = best_training_polygon_layer_recommendation(
+                self.selected_training_polygon_layer()
+            )
+        except ValueError as exc:
+            self.statusSummaryLabel.setText("Could not find a reviewed Training Polygon pattern.")
+            self.statusTextEdit.setPlainText(str(exc))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Training Polygon recommendation failed.", Qgis.Warning)
+            return
+
+        if recommendation is None:
+            self.statusSummaryLabel.setText("No reviewed Training Polygon pattern is ready yet.")
+            self.statusTextEdit.setPlainText(
+                "Review at least 3 polygons with the same shape and side lengths before using a best pattern."
+            )
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Training Polygon recommendation needs more reviewed examples.", Qgis.Info)
+            return
+
+        accepted_pct = round(recommendation.accepted_rate * 100.0, 1)
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Use Best Reviewed Pattern",
+            (
+                "Apply this reviewed pattern to the Training Polygon controls?\n\n"
+                f"{recommendation.shape_name}, {recommendation.side_lengths_label} m\n"
+                f"{accepted_pct}% accepted across {recommendation.reviewed_total} reviewed polygons."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.Yes,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        self._set_custom_training_polygon_controls(
+            recommendation.segment_length_m,
+            recommendation.vertex_count,
+            recommendation.side_lengths_m,
+        )
+        self.statusSummaryLabel.setText("Best reviewed Training Polygon pattern applied.")
+        self.statusTextEdit.setPlainText(
+            f"{recommendation.shape_name}: {recommendation.side_lengths_label} m"
+        )
+        self.statusTextEdit.setVisible(True)
+        self._push_message("Best reviewed Training Polygon pattern applied.", Qgis.Success)
+
+    def _set_custom_training_polygon_controls(self, segment_length_m, vertex_count, side_lengths_m):
+        custom_index = self.trainingPolygonPresetComboBox.findData(
+            next(
+                (
+                    preset
+                    for preset in list_training_polygon_presets()
+                    if preset.key == "custom"
+                ),
+                None,
+            )
+        )
+        if custom_index != -1:
+            self.trainingPolygonPresetComboBox.setCurrentIndex(custom_index)
+
+        self.squareSegmentLengthSpinBox.setValue(segment_length_m)
+        self.squareVertexCountSpinBox.setValue(vertex_count)
+        self.squareCustomSideLengthsLineEdit.setText(
+            ", ".join(f"{length:g}" for length in side_lengths_m)
+            if side_lengths_m
+            else ""
+        )
+        self.trainingAdvancedCheckBox.setChecked(bool(side_lengths_m))
+        self._update_training_square_summary()
+
+    def _target_layer_for_workflow(self, workflow_key):
+        if workflow_key == WORKFLOW_CREATE_TRAINING_SQUARE:
+            return self._current_layer(self.squareTargetLayerComboBox)
+        return self._current_layer(self.targetLayerComboBox)
+
+    def _update_workflow_controls(self, workflow_key):
+        is_canopy = workflow_key == WORKFLOW_LABEL_CANOPY
+        is_square = workflow_key == WORKFLOW_CREATE_TRAINING_SQUARE
+
+        self.chmLayerLabel.setVisible(is_canopy)
+        self.chmLayerComboBox.setVisible(is_canopy)
+        self.targetLayerLabel.setVisible(is_canopy)
+        self.targetLayerComboBox.setVisible(is_canopy)
+        self.speciesLayerLabel.setVisible(is_canopy)
+        self.speciesLayerComboBox.setVisible(is_canopy)
+        self.layersGroupBox.setVisible(is_canopy)
+        self.labelCanopyGroupBox.setVisible(is_canopy)
+        self.trainingSquareGroupBox.setVisible(is_square)
+        if is_square:
+            self._update_training_square_summary()
+            self._update_training_advanced_controls()
+
+    def _update_training_advanced_controls(self):
+        show_advanced = self.trainingAdvancedCheckBox.isChecked()
+        self.squareAngleLabel.setVisible(show_advanced)
+        self.squareAngleSpinBox.setVisible(show_advanced)
+        self.squareCustomSideLengthsLabel.setVisible(show_advanced)
+        self.squareCustomSideLengthsLineEdit.setVisible(show_advanced)
+
+    def _update_training_square_summary(self):
+        try:
+            settings = self.training_polygon_settings()
+            if settings["uses_custom_lengths"]:
+                text = "Creates a {shape} with side lengths: {lengths} m.".format(
+                    shape=settings["shape_name"],
+                    lengths=settings["side_lengths_label"],
+                )
+            else:
+                text = "Creates a {shape} with {nodes} vertices and {segment:.2f} m side lengths.".format(
+                    shape=settings["shape_name"],
+                    nodes=settings["vertex_count"],
+                    segment=settings["segment_length_m"],
+                )
+            self.trainingSquareSummaryLabel.setText(text)
+        except ValueError as exc:
+            self.trainingSquareSummaryLabel.setText(
+                "Custom side lengths need {nodes} valid lengths: {message}.".format(
+                    nodes=self.squareVertexCountSpinBox.value(),
+                    message=str(exc),
+                )
+            )
+
+    def _populate_combo(self, combo, layers, preferred_name, allow_none):
+        combo.blockSignals(True)
+        combo.clear()
+
+        if allow_none:
+            combo.addItem("(none)", None)
+
+        selected_index = 0
+        for layer in layers:
+            combo.addItem(layer.name(), layer.id())
+            if layer.name().lower() == preferred_name.lower():
+                selected_index = combo.count() - 1
+
+        combo.setCurrentIndex(selected_index if combo.count() else -1)
+        combo.blockSignals(False)
+
+    def _current_layer(self, combo):
+        layer_id = combo.currentData()
+        if not layer_id:
+            return None
+        return QgsProject.instance().mapLayer(layer_id)
+
+    def _raster_layers(self):
+        return [
+            layer
+            for layer in QgsProject.instance().mapLayers().values()
+            if isinstance(layer, QgsRasterLayer)
+        ]
+
+    def _vector_layers(self, geometry_type):
+        return [
+            layer
+            for layer in QgsProject.instance().mapLayers().values()
+            if isinstance(layer, QgsVectorLayer) and layer.geometryType() == geometry_type
+        ]
+
+    def _push_message(self, message, level):
+        if self.iface is not None:
+            self.iface.messageBar().pushMessage("Forest Labeler", message, level=level, duration=5)
