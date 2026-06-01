@@ -4,6 +4,8 @@ from forest_labeler_core.canopy_presets import (
     MAX_CROWN_TIGHTNESS,
     MIN_CROWN_TIGHTNESS,
     build_canopy_parameters,
+    crown_tightness_from_percent,
+    crown_tightness_to_percent,
 )
 
 
@@ -51,6 +53,18 @@ class CanopyPresetTest(unittest.TestCase):
         self.assertGreater(loose.profile_max_factor, normal.profile_max_factor)
         self.assertGreaterEqual(loose.final_buffer_smooth_m, 0.45)
         self.assertGreaterEqual(loose.smooth_radius_passes, 3)
+
+    def test_maps_backend_tightness_to_user_facing_percent(self):
+        self.assertEqual(crown_tightness_to_percent(1), 0)
+        self.assertEqual(crown_tightness_to_percent(11), 50)
+        self.assertEqual(crown_tightness_to_percent(21), 100)
+
+    def test_maps_user_facing_percent_to_backend_tightness(self):
+        self.assertEqual(crown_tightness_from_percent(0), 1)
+        self.assertEqual(crown_tightness_from_percent(50), 11)
+        self.assertEqual(crown_tightness_from_percent(100), 21)
+        self.assertEqual(crown_tightness_from_percent(52), 11)
+        self.assertEqual(crown_tightness_from_percent(53), 12)
 
 
 if __name__ == "__main__":

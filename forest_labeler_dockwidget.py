@@ -28,7 +28,13 @@ from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsVectorLayer
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 
-from .forest_labeler_core.canopy_presets import VALID_CANOPY_MODES
+from .forest_labeler_core.canopy_presets import (
+    CROWN_TIGHTNESS_PERCENT_STEP,
+    NORMAL_CROWN_TIGHTNESS,
+    VALID_CANOPY_MODES,
+    crown_tightness_from_percent,
+    crown_tightness_to_percent,
+)
 from .forest_labeler_core.config import (
     CHM_LAYER_NAME,
     SPECIES_POINT_LAYER_NAME,
@@ -101,6 +107,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self._populate_workflows()
         self.workflowComboBox.currentIndexChanged.connect(self._update_workflow_details)
         self.trainingPolygonPresetComboBox.currentIndexChanged.connect(self._apply_training_polygon_preset)
+        self.crownTightnessSlider.valueChanged.connect(self._update_crown_tightness_display)
         self.refreshLayersButton.clicked.connect(self.refresh_layers)
         self.validateProjectButton.clicked.connect(self.validate_project)
         self.activateLabelingButton.clicked.connect(self._request_labeling)
@@ -237,6 +244,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.workflowMaturityLabel.setProperty("tone", "badge")
         self.workflowDescriptionLabel.setProperty("tone", "muted")
         self.trainingSquareSummaryLabel.setProperty("tone", "hint")
+        self.crownTightnessValueLabel.setProperty("tone", "metric")
         self.statusSummaryLabel.setProperty("tone", "status")
         self.statusTextEdit.setMinimumHeight(72)
         self.statusTextEdit.setMaximumHeight(120)
@@ -275,6 +283,14 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 padding: 7px 8px;
                 color: #315d4c;
             }
+            QLabel[tone="metric"] {
+                background: #edf2ef;
+                border: 1px solid #cdd9d3;
+                border-radius: 6px;
+                padding: 5px 7px;
+                color: #244236;
+                font-weight: 700;
+            }
             QLabel[tone="badge"] {
                 background: #e8f1ff;
                 border: 1px solid #c8dcff;
@@ -301,6 +317,26 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             }
             QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus, QLineEdit:focus {
                 border: 1px solid #2f7d5d;
+            }
+            QSlider::groove:horizontal {
+                height: 6px;
+                background: #dce7e1;
+                border-radius: 3px;
+            }
+            QSlider::sub-page:horizontal {
+                background: #2f7d5d;
+                border-radius: 3px;
+            }
+            QSlider::handle:horizontal {
+                width: 18px;
+                height: 18px;
+                margin: -6px 0;
+                border-radius: 9px;
+                background: #ffffff;
+                border: 2px solid #245f49;
+            }
+            QSlider::handle:horizontal:hover {
+                border: 2px solid #2f7d5d;
             }
             QPushButton {
                 border-radius: 7px;
@@ -358,7 +394,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def canopy_settings(self):
         return {
             "canopy_mode": self.canopyModeComboBox.currentText(),
-            "crown_tightness": self.crownTightnessSpinBox.value(),
+            "crown_tightness": crown_tightness_from_percent(self.crownTightnessSlider.value()),
         }
 
     def training_polygon_settings(self):
@@ -396,7 +432,22 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         default_index = self.canopyModeComboBox.findText("MIXED")
         if default_index != -1:
             self.canopyModeComboBox.setCurrentIndex(default_index)
-        self.crownTightnessSpinBox.setValue(11)
+        self.crownTightnessSlider.setValue(crown_tightness_to_percent(NORMAL_CROWN_TIGHTNESS))
+        self._update_crown_tightness_display()
+
+    def _update_crown_tightness_display(self):
+        percent = self.crownTightnessSlider.value()
+        snapped_percent = round(percent / CROWN_TIGHTNESS_PERCENT_STEP) * CROWN_TIGHTNESS_PERCENT_STEP
+        if snapped_percent != percent:
+            self.crownTightnessSlider.blockSignals(True)
+            self.crownTightnessSlider.setValue(snapped_percent)
+            self.crownTightnessSlider.blockSignals(False)
+            percent = snapped_percent
+        tightness = crown_tightness_from_percent(percent)
+        self.crownTightnessValueLabel.setText(f"{percent}%")
+        self.crownTightnessSlider.setToolTip(
+            f"Crown strength {percent}% (engine tightness {tightness} of 21)."
+        )
 
     def _populate_training_polygon_presets(self):
         self.trainingPolygonPresetComboBox.blockSignals(True)

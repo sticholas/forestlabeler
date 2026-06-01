@@ -13,6 +13,9 @@ VALID_CANOPY_MODES = ("DENSE", "SPARSE", "MIXED")
 NORMAL_CROWN_TIGHTNESS = 11
 MIN_CROWN_TIGHTNESS = 1
 MAX_CROWN_TIGHTNESS = 21
+MIN_CROWN_TIGHTNESS_PERCENT = 0
+MAX_CROWN_TIGHTNESS_PERCENT = 100
+CROWN_TIGHTNESS_PERCENT_STEP = 5
 
 
 @dataclass(frozen=True)
@@ -145,6 +148,19 @@ def build_canopy_parameters(mode: str, crown_tightness: int) -> CanopyParameters
         crown_tightness=_clamp_tightness(crown_tightness),
     )
     return _apply_crown_tightness(params)
+
+
+def crown_tightness_to_percent(value: int) -> int:
+    """Map backend crown tightness 1..21 to the user-facing 0..100% scale."""
+    tightness = _clamp_tightness(value)
+    return int(round((tightness - MIN_CROWN_TIGHTNESS) * CROWN_TIGHTNESS_PERCENT_STEP))
+
+
+def crown_tightness_from_percent(percent: int) -> int:
+    """Map the user-facing 0..100% scale to backend crown tightness 1..21."""
+    bounded_percent = max(MIN_CROWN_TIGHTNESS_PERCENT, min(MAX_CROWN_TIGHTNESS_PERCENT, int(percent)))
+    snapped_percent = round(bounded_percent / CROWN_TIGHTNESS_PERCENT_STEP) * CROWN_TIGHTNESS_PERCENT_STEP
+    return _clamp_tightness(int(snapped_percent / CROWN_TIGHTNESS_PERCENT_STEP) + MIN_CROWN_TIGHTNESS)
 
 
 def _clamp_tightness(value: int) -> int:

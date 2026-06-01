@@ -134,22 +134,63 @@
          <item row="1" column="0">
           <widget class="QLabel" name="crownTightnessLabel">
            <property name="text">
-            <string>Tightness</string>
+            <string>Strength</string>
            </property>
           </widget>
          </item>
          <item row="1" column="1">
-          <widget class="QSpinBox" name="crownTightnessSpinBox">
-           <property name="minimum">
-            <number>1</number>
+          <layout class="QHBoxLayout" name="crownTightnessSliderLayout">
+           <property name="spacing">
+            <number>8</number>
            </property>
-           <property name="maximum">
-            <number>21</number>
-           </property>
-           <property name="value">
-            <number>11</number>
-           </property>
-          </widget>
+           <item>
+            <widget class="QSlider" name="crownTightnessSlider">
+             <property name="minimum">
+              <number>0</number>
+             </property>
+             <property name="maximum">
+              <number>100</number>
+             </property>
+             <property name="singleStep">
+              <number>5</number>
+             </property>
+             <property name="pageStep">
+              <number>5</number>
+             </property>
+             <property name="value">
+              <number>50</number>
+             </property>
+             <property name="tracking">
+              <bool>true</bool>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="tickPosition">
+              <enum>QSlider::TicksBelow</enum>
+             </property>
+             <property name="tickInterval">
+              <number>10</number>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="crownTightnessValueLabel">
+             <property name="minimumSize">
+              <size>
+               <width>58</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+             </property>
+             <property name="text">
+              <string>50%</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>
