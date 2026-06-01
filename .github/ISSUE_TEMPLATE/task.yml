@@ -1,0 +1,26 @@
+name: Engineering Task
+description: Track non-user-facing project work.
+title: "[Task]: "
+labels: ["task"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What project capability or safety improvement does this support?
+    validations:
+      required: true
+  - type: textarea
+    id: work
+    attributes:
+      label: Work Items
+      description: List concrete implementation steps.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done When
+      description: Define completion and verification criteria.
+    validations:
+      required: true
