@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from qgis.core import Qgis, QgsCoordinateTransform, QgsGeometry, QgsPointXY, QgsProject
+from qgis.core import Qgis, QgsCoordinateTransform, QgsFeatureRequest, QgsGeometry, QgsPointXY, QgsProject
 
 from ..forest_labeler_core.species import SpeciesDecision, decide_species_assignment
 
@@ -61,7 +61,8 @@ def lookup_species_for_polygon(
             )
 
     matches = []
-    for point_feature in species_layer.getFeatures():
+    request = QgsFeatureRequest().setFilterRect(test_geometry.boundingBox())
+    for point_feature in species_layer.getFeatures(request):
         point_geometry = point_feature.geometry()
         if point_geometry is None or point_geometry.isEmpty():
             continue
