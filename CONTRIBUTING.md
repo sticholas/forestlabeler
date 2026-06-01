@@ -1,26 +1,43 @@
 # Contributing
 
-## How We Work
+Forest Labeler is built for clear, reviewable progress. Changes should be easy
+for a GIS teammate to understand and easy for a developer to verify.
 
-Forest Labeler should be built in small, understandable steps. Every ticket should explain the user problem, the intended behavior, and how the change will be verified.
+## Start Here
 
-## Ticket Template
+- Product direction: [docs/README.md](docs/README.md)
+- Architecture: [docs/development/ARCHITECTURE.md](docs/development/ARCHITECTURE.md)
+- Development workflow: [docs/development/DEVELOPMENT.md](docs/development/DEVELOPMENT.md)
+- Quality gates: [docs/operations/QUALITY_GATES.md](docs/operations/QUALITY_GATES.md)
 
-Use the GitHub issue templates in `.github/ISSUE_TEMPLATE/`.
+## Working Standards
+
+- Keep pure logic in `forest_labeler_core/`.
+- Keep QGIS-specific adapters in `forest_labeler_qgis/`.
+- Keep dock-widget handlers focused on UI coordination.
+- Validate project/layer state before writing data.
+- Preserve existing user data.
+- Keep prototype scripts in `prototypes/` until behavior is migrated,
+  verified, or intentionally retired.
 
 ## Pull Requests
 
-Each pull request should include:
+Each PR should explain:
 
 - what changed
-- why it changed
+- why it matters to the workflow
 - how it was tested
-- screenshots or short notes for visual QGIS behavior
+- whether QGIS manual verification is still needed
 
-## Coding Expectations
+Run before opening or merging a PR:
 
-- Prefer clear module boundaries over one large script.
-- Keep QGIS UI code separate from canopy algorithm logic.
-- Use descriptive names for settings and thresholds.
-- Document non-obvious spatial assumptions.
-- Do not commit local datasets unless they are tiny test fixtures.
+```bash
+bash scripts/checks.sh
+```
+
+If the change touches plugin loading, UI controls, map tools, or feature writes,
+also deploy and test in QGIS:
+
+```bash
+bash scripts/deploy-plugin.sh
+```
