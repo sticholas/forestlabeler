@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>360</width>
-    <height>520</height>
+    <width>332</width>
+    <height>480</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,19 +16,19 @@
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QVBoxLayout" name="mainLayout">
     <property name="spacing">
-     <number>8</number>
+     <number>6</number>
     </property>
     <property name="leftMargin">
-     <number>10</number>
+     <number>8</number>
     </property>
     <property name="topMargin">
-     <number>10</number>
+     <number>8</number>
     </property>
     <property name="rightMargin">
-     <number>10</number>
+     <number>8</number>
     </property>
     <property name="bottomMargin">
-     <number>10</number>
+     <number>8</number>
     </property>
     <item>
      <widget class="QGroupBox" name="workflowGroupBox">
@@ -37,7 +37,7 @@
       </property>
       <layout class="QVBoxLayout" name="workflowLayout">
        <property name="spacing">
-        <number>8</number>
+        <number>6</number>
        </property>
        <item>
         <widget class="QComboBox" name="workflowComboBox"/>
@@ -75,7 +75,7 @@
         <number>10</number>
        </property>
        <property name="verticalSpacing">
-        <number>8</number>
+        <number>6</number>
        </property>
        <item row="0" column="0">
         <widget class="QLabel" name="chmLayerLabel">
@@ -117,7 +117,7 @@
       </property>
       <layout class="QVBoxLayout" name="labelCanopyLayout">
        <property name="spacing">
-        <number>8</number>
+        <number>6</number>
        </property>
        <item>
         <layout class="QFormLayout" name="labelCanopyFormLayout">
@@ -197,35 +197,35 @@
        <item>
         <widget class="QPushButton" name="activateLabelingButton">
          <property name="text">
-          <string>Start Label Canopy</string>
+          <string>Start</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QCheckBox" name="canopyReviewToolsCheckBox">
          <property name="text">
-          <string>Review tools</string>
+          <string>Setup &amp; review</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QPushButton" name="repairCanopySchemaButton">
          <property name="text">
-          <string>Add Canopy Metadata Fields</string>
+          <string>Add Metadata Fields</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QPushButton" name="summarizeCanopyReviewsButton">
          <property name="text">
-          <string>Canopy Review Summary</string>
+          <string>Review Summary</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QPushButton" name="useBestCanopyToolButton">
          <property name="text">
-          <string>Use Best Canopy Tool</string>
+          <string>Use Best Setting</string>
          </property>
         </widget>
        </item>
@@ -237,14 +237,14 @@
          <item>
           <widget class="QPushButton" name="selectUnreviewedCanopiesButton">
            <property name="text">
-            <string>Select Unreviewed</string>
+            <string>Unreviewed</string>
            </property>
           </widget>
          </item>
          <item>
           <widget class="QPushButton" name="selectAttentionCanopiesButton">
            <property name="text">
-            <string>Select Attention</string>
+            <string>Attention</string>
            </property>
           </widget>
          </item>
@@ -302,7 +302,7 @@
       </property>
       <layout class="QVBoxLayout" name="trainingSquareLayout">
        <property name="spacing">
-        <number>8</number>
+        <number>6</number>
        </property>
        <item>
         <layout class="QFormLayout" name="trainingSquareFormLayout">
@@ -433,7 +433,14 @@
        <item>
         <widget class="QPushButton" name="activateTrainingShapeButton">
          <property name="text">
-          <string>Start Training Polygon</string>
+          <string>Start</string>
+        </property>
+       </widget>
+      </item>
+       <item>
+        <widget class="QCheckBox" name="trainingReviewToolsCheckBox">
+         <property name="text">
+          <string>Setup &amp; review</string>
          </property>
         </widget>
        </item>
