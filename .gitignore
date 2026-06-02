@@ -23,7 +23,6 @@ env/
 # QGIS/plugin-builder generated artifacts
 i18n/*.qm
 help/build/
-resources.py
 
 # Local data should not be committed unless it is a tiny fixture.
 data/
