@@ -21,9 +21,15 @@ mkdir -p "${TARGET_DIR}"
 tar \
   --exclude='.git' \
   --exclude='.github' \
+  --exclude='.gitattributes' \
+  --exclude='.gitignore' \
   --exclude='docs' \
   --exclude='prototypes' \
   --exclude='test' \
+  --exclude='unit_tests' \
+  --exclude='scripts' \
+  --exclude='README.md' \
+  --exclude='CONTRIBUTING.md' \
   --exclude='scratch' \
   --exclude='data' \
   --exclude='exports' \
