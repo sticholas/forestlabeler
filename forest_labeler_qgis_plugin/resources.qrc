@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/plugins/forest_labeler" >
-        <file>icon.png</file>
-    </qresource>
-</RCC>

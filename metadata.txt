@@ -5,12 +5,12 @@
 [general]
 name=Forest Labeler
 qgisMinimumVersion=3.0
-description=Delineate canopy and label tree 
+description=Create and review forest training polygons from CHM-assisted canopy labeling workflows.
 version=0.1
 author=Nicholas Rogers
 email=nickrogers2001@gmail.com
 
-about=Tool for delineating canopy and labeling tree to streamline user input
+about=Forest Labeler helps QGIS users create, review, and improve forest training data with CHM-assisted canopy crown labeling, configurable training polygons, validation, metadata writing, and review-ready feedback logs.
 
 tracker=https://github.com/sticholas/forestlabeler/issues
 repository=https://github.com/sticholas/forestlabeler
@@ -44,4 +44,3 @@ Category of the plugin: Raster, Vector, Database or Web
 
 # If the plugin can run on QGIS Server.
 server=False
-
