@@ -23,8 +23,8 @@ Use **Label Canopy** to create one canopy polygon for one tree.
 3. Choose the target canopy polygon layer.
 4. Choose a species point layer if available.
 5. Click **Validate**.
-6. Click **Add Canopy Metadata Fields** if validation warns about missing
-   optional fields.
+6. Open **Setup & review** and click **Add Metadata Fields** if validation warns
+   about missing optional fields.
 7. Choose canopy mode:
    - `DENSE`: tighter behavior for closed canopy or crowded trees.
    - `MIXED`: balanced default.
@@ -41,7 +41,7 @@ The backend still uses the tested `1..21` tightness scale. The UI shows this as
 
 ## Canopy Review
 
-Use review controls to mark selected canopy polygons:
+Open **Setup & review** to mark selected canopy polygons:
 
 - **Accept**: good canopy label.
 - **Reject**: poor canopy label, kept in layer for inspection.
@@ -74,6 +74,10 @@ Use **Training Polygon** to create configurable training areas.
 3. Set side length, vertex count, angle, or custom side lengths.
 4. Click **Start Training Polygon**.
 5. Click the map to place the polygon.
+
+Open **Advanced options** only when rotation or custom side lengths are needed.
+Open **Setup & review** for metadata-field repair, review summaries, best
+reviewed pattern selection, and selected-polygon review actions.
 
 Keyboard shortcuts while the map tool is active:
 

@@ -145,6 +145,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             lambda: self._mark_selected_training_polygons(REVIEW_STATUS_UNSURE)
         )
         self.trainingAdvancedCheckBox.toggled.connect(self._update_training_advanced_controls)
+        self.trainingReviewToolsCheckBox.toggled.connect(self._update_training_review_controls)
         self.squareSegmentLengthSpinBox.valueChanged.connect(self._update_training_square_summary)
         self.squareVertexCountSpinBox.valueChanged.connect(self._update_training_square_summary)
         self.squareAngleSpinBox.valueChanged.connect(self._update_training_square_summary)
@@ -152,6 +153,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self._update_training_square_summary()
         self._update_canopy_review_controls()
         self._update_training_advanced_controls()
+        self._update_training_review_controls()
         self.refresh_layers()
 
     def closeEvent(self, event):
@@ -233,6 +235,8 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.markCanopyUnsureButton.setProperty("buttonRole", "secondary")
         self.rejectRemoveCanopiesButton.setProperty("buttonRole", "secondary")
         self.canopyReviewToolsCheckBox.setProperty("tone", "toggle")
+        self.trainingReviewToolsCheckBox.setProperty("tone", "toggle")
+        self.trainingAdvancedCheckBox.setProperty("tone", "toggle")
         self.validateProjectButton.setProperty("buttonRole", "secondary")
         self.refreshLayersButton.setProperty("buttonRole", "secondary")
         self.repairTrainingPolygonSchemaButton.setProperty("buttonRole", "secondary")
@@ -246,22 +250,23 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.trainingSquareSummaryLabel.setProperty("tone", "hint")
         self.crownTightnessValueLabel.setProperty("tone", "metric")
         self.statusSummaryLabel.setProperty("tone", "status")
-        self.statusTextEdit.setMinimumHeight(72)
-        self.statusTextEdit.setMaximumHeight(120)
+        self.workflowDescriptionLabel.setMaximumHeight(46)
+        self.statusTextEdit.setMinimumHeight(60)
+        self.statusTextEdit.setMaximumHeight(96)
         self.statusTextEdit.setVisible(False)
         self.setStyleSheet(
             """
             QWidget#dockWidgetContents {
                 background: #f6f8f7;
                 color: #15211d;
-                font-size: 12px;
+                font-size: 11px;
             }
             QGroupBox {
                 background: #ffffff;
                 border: 1px solid #d8e2dd;
                 border-radius: 8px;
-                margin-top: 14px;
-                padding: 12px 9px 9px 9px;
+                margin-top: 12px;
+                padding: 10px 8px 8px 8px;
                 font-weight: 600;
                 color: #18362d;
             }
@@ -311,8 +316,8 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 background: #ffffff;
                 border: 1px solid #cfd9d4;
                 border-radius: 6px;
-                padding: 5px 7px;
-                min-height: 22px;
+                padding: 4px 6px;
+                min-height: 20px;
                 selection-background-color: #2f7d5d;
             }
             QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus, QLineEdit:focus {
@@ -340,9 +345,9 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             }
             QPushButton {
                 border-radius: 7px;
-                padding: 6px 10px;
+                padding: 5px 9px;
                 font-weight: 600;
-                min-height: 22px;
+                min-height: 20px;
             }
             QCheckBox {
                 color: #315d4c;
@@ -353,7 +358,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 background: #edf2ef;
                 border: 1px solid #cdd9d3;
                 border-radius: 7px;
-                padding: 7px 8px;
+                padding: 6px 7px;
             }
             QPushButton[buttonRole="primary"] {
                 background: #245f49;
@@ -668,7 +673,9 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if mode_index != -1:
             self.canopyModeComboBox.setCurrentIndex(mode_index)
         if recommendation.crown_tightness is not None:
-            self.crownTightnessSpinBox.setValue(recommendation.crown_tightness)
+            self.crownTightnessSlider.setValue(
+                crown_tightness_to_percent(recommendation.crown_tightness)
+            )
         self.statusSummaryLabel.setText("Best reviewed canopy tool setting applied.")
         self.statusTextEdit.setPlainText(
             f"{recommendation.canopy_mode}, tightness {recommendation.crown_tightness}"
@@ -688,6 +695,16 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.markCanopyRejectedButton.setVisible(show_review)
         self.markCanopyUnsureButton.setVisible(show_review)
         self.rejectRemoveCanopiesButton.setVisible(show_review)
+
+    def _update_training_review_controls(self):
+        show_review = self.trainingReviewToolsCheckBox.isChecked()
+        self.repairTrainingPolygonSchemaButton.setVisible(show_review)
+        self.summarizeTrainingPolygonReviewsButton.setVisible(show_review)
+        self.useBestTrainingPolygonPatternButton.setVisible(show_review)
+        self.trainingPolygonReviewNoteLineEdit.setVisible(show_review)
+        self.markTrainingPolygonAcceptedButton.setVisible(show_review)
+        self.markTrainingPolygonRejectedButton.setVisible(show_review)
+        self.markTrainingPolygonUnsureButton.setVisible(show_review)
 
     def _select_canopies_by_review_filter(self, review_filter):
         result = select_canopies_by_review_filter(
@@ -902,6 +919,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if is_square:
             self._update_training_square_summary()
             self._update_training_advanced_controls()
+            self._update_training_review_controls()
 
     def _update_training_advanced_controls(self):
         show_advanced = self.trainingAdvancedCheckBox.isChecked()
