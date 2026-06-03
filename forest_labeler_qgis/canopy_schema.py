@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import sqlite3
 from dataclasses import dataclass
+from pathlib import Path
+from urllib.parse import unquote
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsField, QgsVectorDataProvider
@@ -24,9 +27,11 @@ def repair_canopy_schema(layer):
     if _layer_is_read_only(layer):
         return CanopySchemaRepairResult(False, (), (), (f"'{layer.name()}' is read-only.",))
 
+    layer.updateFields()
     missing_names = set(missing_canopy_schema_fields(layer))
     missing = [field_spec for field_spec in CANOPY_FIELD_SPECS if field_spec.name in missing_names]
     if not missing:
+        layer.updateFields()
         return CanopySchemaRepairResult(True, (), (), ())
 
     provider = layer.dataProvider()
@@ -88,7 +93,58 @@ def _existing_field_names(layer):
         names.update(field.name().lower() for field in layer.dataProvider().fields())
     except Exception:
         pass
+    names.update(_existing_geopackage_field_names(layer))
     return names
+
+
+def _existing_geopackage_field_names(layer):
+    source_path = _source_path(layer)
+    table_name = _source_table_name(layer)
+    if source_path is None or table_name is None:
+        return set()
+    if source_path.suffix.lower() not in {".gpkg", ".sqlite", ".db"}:
+        return set()
+    if not source_path.exists():
+        return set()
+
+    try:
+        with sqlite3.connect(str(source_path)) as connection:
+            cursor = connection.execute(f'PRAGMA table_info("{_escape_sqlite_identifier(table_name)}")')
+            return {str(row[1]).lower() for row in cursor.fetchall()}
+    except Exception:
+        return set()
+
+
+def _source_path(layer):
+    try:
+        path_text = layer.source().split("|", 1)[0]
+    except Exception:
+        return None
+    if path_text.startswith("file://"):
+        path_text = path_text[len("file://"):]
+    return Path(unquote(path_text))
+
+
+def _source_table_name(layer):
+    try:
+        uri = layer.source()
+    except Exception:
+        return None
+    for part in uri.split("|")[1:]:
+        if part.startswith("layername="):
+            return unquote(part.split("=", 1)[1])
+    try:
+        provider_uri = layer.dataProvider().uri()
+        table_name = provider_uri.table()
+        if table_name:
+            return str(table_name)
+    except Exception:
+        pass
+    return None
+
+
+def _escape_sqlite_identifier(identifier):
+    return str(identifier).replace('"', '""')
 
 
 def _qgs_field_from_spec(field_spec):
