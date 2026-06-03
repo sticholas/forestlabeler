@@ -24,20 +24,10 @@ make the workflow smarter over time.
 
 ## Quick Start
 
-For local development on this machine:
-
-```bash
-cd "/mnt/c/Users/Milo/Documents/Forest Labeler"
-bash scripts/deploy-plugin.sh
-```
-
-Then restart QGIS or reload the plugin.
-
-For a new user or teammate:
-
 1. Clone the repository.
 2. Follow the [Install Guide](docs/user/INSTALL.md).
 3. Open the [User Guide](docs/user/USER_GUIDE.md).
+4. Restart QGIS or reload the plugin after installation.
 
 ## First Canopy Workflow
 
