@@ -723,7 +723,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def _update_canopy_review_controls(self):
         show_review = self.canopyReviewToolsCheckBox.isChecked()
-        self.repairCanopySchemaButton.setVisible(show_review)
+        self.repairCanopySchemaButton.setVisible(False)
         self.summarizeCanopyReviewsButton.setVisible(show_review)
         self.useBestCanopyToolButton.setVisible(show_review)
         self.selectUnreviewedCanopiesButton.setVisible(show_review)
@@ -736,7 +736,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def _update_training_review_controls(self):
         show_review = self.trainingReviewToolsCheckBox.isChecked()
-        self.repairTrainingPolygonSchemaButton.setVisible(show_review)
+        self.repairTrainingPolygonSchemaButton.setVisible(False)
         self.summarizeTrainingPolygonReviewsButton.setVisible(show_review)
         self.useBestTrainingPolygonPatternButton.setVisible(show_review)
         self.trainingPolygonReviewNoteLineEdit.setVisible(show_review)

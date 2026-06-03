@@ -43,7 +43,7 @@ The backend still uses the tested `1..21` tightness scale. The UI shows this as
 
 ## Canopy Review
 
-Open **Setup & review** to mark selected canopy polygons:
+Open **Review & QA** to mark selected canopy polygons:
 
 - **Accept**: good canopy label.
 - **Reject**: poor canopy label, kept in layer for inspection.
@@ -78,8 +78,8 @@ Use **Training Polygon** to create configurable training areas.
 5. Click the map to place the polygon.
 
 Open **Advanced options** only when rotation or custom side lengths are needed.
-Open **Setup & review** for metadata-field repair, review summaries, best
-reviewed pattern selection, and selected-polygon review actions.
+Open **Review & QA** for review summaries, best reviewed pattern selection, and
+selected-polygon review actions.
 
 Keyboard shortcuts while the map tool is active:
 
@@ -101,7 +101,8 @@ review.
 
 - Keep the target layer editable while labeling.
 - Validate before each major labeling session.
-- Add metadata fields early so future review and learning data is preserved.
+- Accept validation prompts to add Forest Labeler fields early so future review
+  and learning data is preserved.
 - Use `Reject + Remove` for bad generated crowns you do not want to keep.
 - If canopy creation feels slow, use smaller press-hold radii and avoid
   unnecessarily high strength settings unless the tree needs it.
