@@ -204,7 +204,7 @@
        <item>
         <widget class="QCheckBox" name="canopyReviewToolsCheckBox">
          <property name="text">
-          <string>Setup &amp; review</string>
+          <string>Review &amp; QA</string>
          </property>
         </widget>
        </item>
@@ -440,7 +440,7 @@
        <item>
         <widget class="QCheckBox" name="trainingReviewToolsCheckBox">
          <property name="text">
-          <string>Setup &amp; review</string>
+          <string>Review &amp; QA</string>
          </property>
         </widget>
        </item>

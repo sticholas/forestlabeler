@@ -12,7 +12,9 @@ state, and optional metadata fields. Forest Labeler should not write production
 features until validation passes.
 
 Warnings usually mean the tool can run, but some metadata will not be stored
-until missing fields are added.
+until missing fields are added. When Forest Labeler detects missing metadata
+fields on a valid writable target layer, it offers to add those fields
+automatically after validation. Existing features are kept.
 
 ## Label Canopy
 
@@ -23,8 +25,8 @@ Use **Label Canopy** to create one canopy polygon for one tree.
 3. Choose the target canopy polygon layer.
 4. Choose a species point layer if available.
 5. Click **Validate**.
-6. Open **Setup & review** and click **Add Metadata Fields** if validation warns
-   about missing optional fields.
+6. If validation offers to add missing Forest Labeler fields, choose **Yes** to
+   let the plugin prepare the target layer schema.
 7. Choose canopy mode:
    - `DENSE`: tighter behavior for closed canopy or crowded trees.
    - `MIXED`: balanced default.
@@ -41,7 +43,7 @@ The backend still uses the tested `1..21` tightness scale. The UI shows this as
 
 ## Canopy Review
 
-Open **Setup & review** to mark selected canopy polygons:
+Open **Review & QA** to mark selected canopy polygons:
 
 - **Accept**: good canopy label.
 - **Reject**: poor canopy label, kept in layer for inspection.
@@ -76,8 +78,8 @@ Use **Training Polygon** to create configurable training areas.
 5. Click the map to place the polygon.
 
 Open **Advanced options** only when rotation or custom side lengths are needed.
-Open **Setup & review** for metadata-field repair, review summaries, best
-reviewed pattern selection, and selected-polygon review actions.
+Open **Review & QA** for review summaries, best reviewed pattern selection, and
+selected-polygon review actions.
 
 Keyboard shortcuts while the map tool is active:
 
@@ -99,7 +101,8 @@ review.
 
 - Keep the target layer editable while labeling.
 - Validate before each major labeling session.
-- Add metadata fields early so future review and learning data is preserved.
+- Accept validation prompts to add Forest Labeler fields early so future review
+  and learning data is preserved.
 - Use `Reject + Remove` for bad generated crowns you do not want to keep.
 - If canopy creation feels slow, use smaller press-hold radii and avoid
   unnecessarily high strength settings unless the tree needs it.

@@ -25,11 +25,11 @@ def repair_training_polygon_schema(layer):
     if _layer_is_read_only(layer):
         return SchemaRepairResult(False, (), (), (f"'{layer.name()}' is read-only.",))
 
-    existing_fields = {field.name() for field in layer.fields()}
+    missing_names = set(missing_training_polygon_schema_fields(layer))
     missing_specs = [
         field_spec
         for field_spec in TRAINING_POLYGON_FIELD_SPECS
-        if field_spec.name not in existing_fields
+        if field_spec.name in missing_names
     ]
     if not missing_specs:
         return SchemaRepairResult(True, (), (), ())
@@ -58,6 +58,18 @@ def repair_training_polygon_schema(layer):
         tuple(field.name() for field in fields),
         (),
         (),
+    )
+
+
+def missing_training_polygon_schema_fields(layer):
+    """Return Forest Labeler Training Polygon fields that are not present on the layer."""
+    if layer is None:
+        return ()
+    existing_fields = {field.name() for field in layer.fields()}
+    return tuple(
+        field_spec.name
+        for field_spec in TRAINING_POLYGON_FIELD_SPECS
+        if field_spec.name not in existing_fields
     )
 
 
