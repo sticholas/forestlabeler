@@ -3,8 +3,16 @@ set -euo pipefail
 
 PLUGIN_NAME="forest_labeler_qgis_plugin"
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET_DIR="/mnt/c/Users/Milo/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/${PLUGIN_NAME}"
+WINDOWS_USER="${WINDOWS_USER:-${USER:-}}"
+DEFAULT_QGIS_PLUGIN_DIR="/mnt/c/Users/${WINDOWS_USER}/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins"
+TARGET_BASE_DIR="${QGIS_PLUGIN_DIR:-${DEFAULT_QGIS_PLUGIN_DIR}}"
+TARGET_DIR="${TARGET_BASE_DIR}/${PLUGIN_NAME}"
 BACKUP_DIR="${TARGET_DIR}.backup.$(date +%Y%m%d%H%M%S)"
+
+if [[ -z "${TARGET_BASE_DIR}" ]]; then
+  echo "Set QGIS_PLUGIN_DIR to your QGIS profile plugin directory." >&2
+  exit 1
+fi
 
 if [[ ! -f "${SOURCE_DIR}/metadata.txt" ]]; then
   echo "Could not find metadata.txt in ${SOURCE_DIR}" >&2

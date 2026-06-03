@@ -63,7 +63,7 @@ For every plugin behavior change, record:
 From Warp/WSL:
 
 ```bash
-cd "/mnt/c/Users/Milo/Documents/Forest Labeler"
+cd "<your Forest Labeler checkout>"
 bash scripts/deploy-plugin.sh
 ```
 

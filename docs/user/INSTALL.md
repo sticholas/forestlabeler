@@ -31,12 +31,15 @@ forest_labeler_qgis_plugin
 From WSL/Warp:
 
 ```bash
-cd "/mnt/c/Users/Milo/Documents/Forest Labeler"
+cd "<your Forest Labeler checkout>"
 bash scripts/deploy-plugin.sh
 ```
 
 The deploy script backs up the previous local install and copies the current
 source into the QGIS plugin profile.
+
+If QGIS uses a non-default profile or plugin directory, set `QGIS_PLUGIN_DIR`
+before running the deploy script.
 
 After deploying, restart QGIS or use Plugin Reloader.
 
