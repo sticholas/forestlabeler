@@ -49,6 +49,11 @@ Open **Setup & review** to mark selected canopy polygons:
 - **Reject + Remove**: logs the rejected attempt, then removes it from the clean
   target layer.
 
+While **Label Canopy** is active, `Ctrl+Z` is a quick reject/remove shortcut for
+the currently selected canopy. It writes the rejected attempt to the feedback
+CSV before removing the feature. If no canopy is selected, Forest Labeler leaves
+`Ctrl+Z` available for normal QGIS undo behavior.
+
 Forest Labeler writes a project-local feedback CSV named:
 
 ```text
@@ -100,6 +105,7 @@ review.
 - Keep the target layer editable while labeling.
 - Validate before each major labeling session.
 - Add metadata fields early so future review and learning data is preserved.
-- Use `Reject + Remove` for bad generated crowns you do not want to keep.
+- Use `Ctrl+Z` for quick selected-canopy cleanup while Label Canopy is active,
+  and use `Reject + Remove` for selected batches.
 - If canopy creation feels slow, use smaller press-hold radii and avoid
   unnecessarily high strength settings unless the tree needs it.

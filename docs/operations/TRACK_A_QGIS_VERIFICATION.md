@@ -82,6 +82,8 @@ After creating a canopy, inspect the target layer attribute table.
 | Reject selected canopy | `reviewed = -1`, `review_status = rejected` | Not run |  |
 | Unsure selected canopy | `reviewed = 0`, `review_status = unsure` | Not run |  |
 | Reject + Remove selected canopy | Attempt is logged to `forest_labeler_canopy_attempts.csv` and feature is removed from target layer | Not run |  |
+| `Ctrl+Z` quick reject while Label Canopy is active | Selected canopy attempt is logged to `forest_labeler_canopy_attempts.csv` with quick-reject note and feature is removed from target layer | Not run |  |
+| `Ctrl+Z` with no selected canopy | Normal QGIS undo behavior remains available | Not run |  |
 | Review note | `review_note` stores typed note when field exists | Not run |  |
 | Canopy Review Summary | Counts total, reviewed, unreviewed, accepted, rejected, unsure | Not run |  |
 | Select Unreviewed | Selects only canopies with unreviewed status | Not run |  |
