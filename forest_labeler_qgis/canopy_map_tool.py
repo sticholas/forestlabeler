@@ -13,6 +13,7 @@ from qgis.gui import QgsMapTool, QgsRubberBand
 from ..forest_labeler_core.canopy_presets import build_canopy_parameters
 from ..forest_labeler_core.raster_sources import is_probable_ortho_source
 from .canopy_service import CanopyCreationRequest, create_canopy_feature
+from .canopy_review import reject_and_remove_selected_canopies
 from .crown_preview_service import (
     CrownPreviewRequest,
     build_crown_preview_geometry,
@@ -62,7 +63,8 @@ class CanopyLabelMapTool(QgsMapTool):
             "Forest Labeler",
             (
                 f"Label Canopy active: {self.settings.canopy_mode}, "
-                f"tightness {self.settings.crown_tightness}. Click or press-hold to create a crown."
+                f"tightness {self.settings.crown_tightness}. Click or press-hold to create a crown. "
+                "Ctrl+Z logs and removes selected canopy attempts."
             ),
         )
 
@@ -72,6 +74,11 @@ class CanopyLabelMapTool(QgsMapTool):
         super().deactivate()
 
     def keyPressEvent(self, event):
+        if self._is_quick_reject_shortcut(event):
+            if self._quick_reject_selected_canopies():
+                event.accept()
+                return
+
         if event.key() == Qt.Key.Key_Escape:
             self.stop_hold()
             self.preview_band.hide()
@@ -236,6 +243,40 @@ class CanopyLabelMapTool(QgsMapTool):
         self.current_geometry = None
         self.current_build_result = None
         self.preview_is_refined = False
+
+    def _is_quick_reject_shortcut(self, event):
+        modifiers = event.modifiers()
+        return (
+            event.key() == Qt.Key.Key_Z
+            and bool(modifiers & Qt.KeyboardModifier.ControlModifier)
+            and not bool(modifiers & Qt.KeyboardModifier.ShiftModifier)
+            and not bool(modifiers & Qt.KeyboardModifier.AltModifier)
+        )
+
+    def _quick_reject_selected_canopies(self):
+        target_layer = self.settings.target_layer
+        if target_layer is None or not target_layer.selectedFeatureIds():
+            return False
+
+        result = reject_and_remove_selected_canopies(
+            target_layer,
+            note="Ctrl+Z quick reject",
+        )
+        if result.ok:
+            self.canvas.refresh()
+            self.iface.messageBar().pushSuccess(
+                "Forest Labeler",
+                f"Logged and removed {result.updated_count} rejected canopy attempt(s).",
+            )
+            if result.warnings:
+                self.iface.messageBar().pushWarning("Forest Labeler", " ".join(result.warnings))
+            return True
+
+        self.iface.messageBar().pushWarning(
+            "Forest Labeler",
+            " ".join(result.errors + result.warnings),
+        )
+        return True
 
     def _transform_point(self, point, source_crs, target_crs):
         if source_crs == target_crs:

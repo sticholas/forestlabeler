@@ -43,20 +43,39 @@ def repair_training_polygon_schema(layer):
             (f"'{layer.name()}' does not support adding fields.",),
         )
 
-    fields = [_qgs_field_from_spec(field_spec) for field_spec in missing_specs]
-    if not provider.addAttributes(fields):
+    added = []
+    skipped = []
+    errors = []
+    for field_spec in missing_specs:
+        if field_spec.name.lower() in _existing_field_names(layer):
+            skipped.append(field_spec.name)
+            continue
+
+        field = _qgs_field_from_spec(field_spec)
+        if provider.addAttributes([field]):
+            added.append(field.name())
+            layer.updateFields()
+            continue
+
+        layer.updateFields()
+        if field_spec.name.lower() in _existing_field_names(layer):
+            skipped.append(field_spec.name)
+            continue
+        errors.append(f"Could not add field '{field_spec.name}' to '{layer.name()}'.")
+
+    if errors:
         return SchemaRepairResult(
             False,
-            (),
-            tuple(field.name() for field in fields),
-            (f"Could not add fields to '{layer.name()}'.",),
+            tuple(added),
+            tuple(skipped),
+            tuple(errors),
         )
 
     layer.updateFields()
     return SchemaRepairResult(
         True,
-        tuple(field.name() for field in fields),
-        (),
+        tuple(added),
+        tuple(skipped),
         (),
     )
 
@@ -65,12 +84,21 @@ def missing_training_polygon_schema_fields(layer):
     """Return Forest Labeler Training Polygon fields that are not present on the layer."""
     if layer is None:
         return ()
-    existing_fields = {field.name() for field in layer.fields()}
+    existing_fields = _existing_field_names(layer)
     return tuple(
         field_spec.name
         for field_spec in TRAINING_POLYGON_FIELD_SPECS
-        if field_spec.name not in existing_fields
+        if field_spec.name.lower() not in existing_fields
     )
+
+
+def _existing_field_names(layer):
+    names = {field.name().lower() for field in layer.fields()}
+    try:
+        names.update(field.name().lower() for field in layer.dataProvider().fields())
+    except Exception:
+        pass
+    return names
 
 
 def _qgs_field_from_spec(field_spec):

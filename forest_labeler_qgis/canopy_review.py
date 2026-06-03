@@ -132,6 +132,8 @@ def reject_and_remove_selected_canopies(layer, note=None):
             log_result = log_removed_canopy_attempt(layer, feature, note=note)
             if not log_result.ok:
                 warnings.extend(log_result.errors)
+                warnings.append(f"Canopy feature {feature_id} was kept because the rejected attempt was not logged.")
+                continue
             if not layer.deleteFeature(feature_id):
                 warnings.append(f"Could not remove canopy feature {feature_id}.")
                 continue

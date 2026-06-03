@@ -51,6 +51,11 @@ Open **Review & QA** to mark selected canopy polygons:
 - **Reject + Remove**: logs the rejected attempt, then removes it from the clean
   target layer.
 
+While **Label Canopy** is active, `Ctrl+Z` is a quick reject/remove shortcut for
+the currently selected canopy. It writes the rejected attempt to the feedback
+CSV before removing the feature. If no canopy is selected, Forest Labeler leaves
+`Ctrl+Z` available for normal QGIS undo behavior.
+
 Forest Labeler writes a project-local feedback CSV named:
 
 ```text
@@ -66,6 +71,10 @@ Key identity fields:
 - `canopy_fid`: the real `fid` attribute in the canopy layer.
 - `qgis_feature_id`: QGIS internal feature ID, sometimes temporary or negative.
 - `project_id`: stable project identity stored as a QGIS project variable.
+
+Forest Labeler keeps reject/remove actions log-first. If a rejected attempt
+cannot be written to the feedback CSV, the canopy feature is kept so the
+training evidence is not lost silently.
 
 ## Create Training Polygon
 
