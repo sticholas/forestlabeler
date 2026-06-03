@@ -68,8 +68,11 @@ from .forest_labeler_qgis.canopy_review import (
     select_canopies_by_review_filter,
     summarize_canopy_layer_reviews,
 )
-from .forest_labeler_qgis.canopy_schema import repair_canopy_schema
-from .forest_labeler_qgis.training_polygon_schema import repair_training_polygon_schema
+from .forest_labeler_qgis.canopy_schema import missing_canopy_schema_fields, repair_canopy_schema
+from .forest_labeler_qgis.training_polygon_schema import (
+    missing_training_polygon_schema_fields,
+    repair_training_polygon_schema,
+)
 from .forest_labeler_qgis.training_polygon_review import (
     REVIEW_STATUS_ACCEPTED,
     REVIEW_STATUS_REJECTED,
@@ -219,6 +222,8 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.statusTextEdit.setPlainText("\n".join(lines))
         self.statusTextEdit.setVisible(bool(lines))
+        if result.ok:
+            self._offer_schema_repair_after_validation(workflow_key)
 
         return result
 
@@ -527,24 +532,57 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.activateLabelingRequested.emit()
 
-    def _repair_canopy_schema(self):
+    def _offer_schema_repair_after_validation(self, workflow_key):
+        if workflow_key == WORKFLOW_LABEL_CANOPY:
+            layer = self._current_layer(self.targetLayerComboBox)
+            missing_fields = missing_canopy_schema_fields(layer)
+            repair = lambda: self._repair_canopy_schema(confirm=False)
+            label = "canopy"
+        elif workflow_key == WORKFLOW_CREATE_TRAINING_SQUARE:
+            layer = self.selected_training_polygon_layer()
+            missing_fields = missing_training_polygon_schema_fields(layer)
+            repair = lambda: self._repair_training_polygon_schema(confirm=False)
+            label = "Training Polygon"
+        else:
+            return
+
+        if layer is None or not missing_fields:
+            return
+
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Add Forest Labeler Fields",
+            (
+                f"'{layer.name()}' passed validation, but Forest Labeler can store richer "
+                f"{label} metadata if these field(s) are added:\n\n"
+                f"{', '.join(missing_fields)}\n\n"
+                "Add the missing fields now? Existing features will be kept."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.Yes,
+        )
+        if answer == QtWidgets.QMessageBox.Yes:
+            repair()
+
+    def _repair_canopy_schema(self, confirm=True):
         layer = self._current_layer(self.targetLayerComboBox)
         if layer is None:
             self._push_message("Select a target canopy polygon layer first.", Qgis.Warning)
             return
 
-        answer = QtWidgets.QMessageBox.question(
-            self,
-            "Add Canopy Metadata Fields",
-            (
-                f"Add missing optional Forest Labeler canopy fields to '{layer.name()}'?\n\n"
-                "This updates the selected canopy layer schema and keeps existing features."
-            ),
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-            QtWidgets.QMessageBox.No,
-        )
-        if answer != QtWidgets.QMessageBox.Yes:
-            return
+        if confirm:
+            answer = QtWidgets.QMessageBox.question(
+                self,
+                "Add Canopy Metadata Fields",
+                (
+                    f"Add missing optional Forest Labeler canopy fields to '{layer.name()}'?\n\n"
+                    "This updates the selected canopy layer schema and keeps existing features."
+                ),
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.No,
+            )
+            if answer != QtWidgets.QMessageBox.Yes:
+                return
 
         result = repair_canopy_schema(layer)
         if result.ok and result.added_fields:
@@ -743,24 +781,25 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.activateTrainingShapeRequested.emit()
 
-    def _repair_training_polygon_schema(self):
+    def _repair_training_polygon_schema(self, confirm=True):
         layer = self.selected_training_polygon_layer()
         if layer is None:
             self._push_message("Select a Training Polygon target layer first.", Qgis.Warning)
             return
 
-        answer = QtWidgets.QMessageBox.question(
-            self,
-            "Add Training Polygon Fields",
-            (
-                f"Add missing optional Forest Labeler metadata fields to '{layer.name()}'?\n\n"
-                "This updates the selected layer schema and keeps existing fields and features."
-            ),
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-            QtWidgets.QMessageBox.No,
-        )
-        if answer != QtWidgets.QMessageBox.Yes:
-            return
+        if confirm:
+            answer = QtWidgets.QMessageBox.question(
+                self,
+                "Add Training Polygon Fields",
+                (
+                    f"Add missing optional Forest Labeler metadata fields to '{layer.name()}'?\n\n"
+                    "This updates the selected layer schema and keeps existing fields and features."
+                ),
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.No,
+            )
+            if answer != QtWidgets.QMessageBox.Yes:
+                return
 
         result = repair_training_polygon_schema(layer)
         if result.ok and result.added_fields:

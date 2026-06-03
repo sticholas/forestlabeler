@@ -12,7 +12,9 @@ state, and optional metadata fields. Forest Labeler should not write production
 features until validation passes.
 
 Warnings usually mean the tool can run, but some metadata will not be stored
-until missing fields are added.
+until missing fields are added. When Forest Labeler detects missing metadata
+fields on a valid writable target layer, it offers to add those fields
+automatically after validation. Existing features are kept.
 
 ## Label Canopy
 
@@ -23,8 +25,8 @@ Use **Label Canopy** to create one canopy polygon for one tree.
 3. Choose the target canopy polygon layer.
 4. Choose a species point layer if available.
 5. Click **Validate**.
-6. Open **Setup & review** and click **Add Metadata Fields** if validation warns
-   about missing optional fields.
+6. If validation offers to add missing Forest Labeler fields, choose **Yes** to
+   let the plugin prepare the target layer schema.
 7. Choose canopy mode:
    - `DENSE`: tighter behavior for closed canopy or crowded trees.
    - `MIXED`: balanced default.

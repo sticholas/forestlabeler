@@ -24,8 +24,8 @@ def repair_canopy_schema(layer):
     if _layer_is_read_only(layer):
         return CanopySchemaRepairResult(False, (), (), (f"'{layer.name()}' is read-only.",))
 
-    existing = {field.name() for field in layer.fields()}
-    missing = [field_spec for field_spec in CANOPY_FIELD_SPECS if field_spec.name not in existing]
+    missing_names = set(missing_canopy_schema_fields(layer))
+    missing = [field_spec for field_spec in CANOPY_FIELD_SPECS if field_spec.name in missing_names]
     if not missing:
         return CanopySchemaRepairResult(True, (), (), ())
 
@@ -49,6 +49,14 @@ def repair_canopy_schema(layer):
 
     layer.updateFields()
     return CanopySchemaRepairResult(True, tuple(field.name() for field in fields), (), ())
+
+
+def missing_canopy_schema_fields(layer):
+    """Return Forest Labeler canopy fields that are not present on the layer."""
+    if layer is None:
+        return ()
+    existing = {field.name() for field in layer.fields()}
+    return tuple(field_spec.name for field_spec in CANOPY_FIELD_SPECS if field_spec.name not in existing)
 
 
 def _qgs_field_from_spec(field_spec):
