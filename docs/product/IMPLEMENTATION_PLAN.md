@@ -141,7 +141,9 @@ Objective:
 Implementation:
 
 - Add feedback panel for selected canopy feature.
-- Store feedback in target attributes if fields exist, or a sidecar GeoPackage table.
+- Store immutable feedback events in a versioned project-local SQLite database.
+- Keep CSV as a readable compatibility export.
+- Link lifecycle events through stable attempt IDs and make repeated signals idempotent.
 - Track correction reasons:
   - too large
   - too small

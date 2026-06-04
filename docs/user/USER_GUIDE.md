@@ -62,8 +62,14 @@ Forest Labeler writes a project-local feedback CSV named:
 forest_labeler_canopy_attempts.csv
 ```
 
-The CSV is not meant to be the daily user interface. It is a feedback trail for
-future QA summaries, learning, and team review tooling.
+Forest Labeler also writes a durable project-local event database named:
+
+```text
+forest_labeler_feedback.sqlite3
+```
+
+The SQLite database is the source of truth for future QA summaries, learning,
+and team review tooling. The CSV remains a readable compatibility export.
 
 Key identity fields:
 
