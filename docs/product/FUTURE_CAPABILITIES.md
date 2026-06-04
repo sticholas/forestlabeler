@@ -19,10 +19,16 @@ Show progress and quality signals for a project:
 
 Recommend settings without silently changing behavior:
 
+- ship a universal baseline so first-time users receive useful defaults
+- adapt recommendations through compatible project and user evidence
+- allow approved team and universal contributions through explicit opt-in
 - suggest crown tightness based on reviewed success rates
 - warn when a mode is producing many rejected polygons
 - suggest checking species points if conflicts are frequent
 - flag unusually large or small canopy polygons
+
+Every recommendation should name its evidence scope, compatibility context,
+sample size, and observed success rate.
 
 ### Guided QA
 

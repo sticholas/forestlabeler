@@ -127,4 +127,10 @@ compatibility export. Pure event identity, schema, and persistence behavior
 live in `forest_labeler_core/feedback_event_store.py`; QGIS adapters determine
 project-local paths and translate QGIS lifecycle activity into event records.
 
+Learning-scope policy lives in `forest_labeler_core/learning_scopes.py`. It
+defines project, user, team, and universal evidence; compatibility rules;
+minimum evidence requirements; recommendation precedence; and explicit sharing
+permissions. This policy layer must remain independent from storage and UI so it
+can be tested before recommendations affect user workflows.
+
 See [Canopy Learning Log](../reference/CANOPY_LEARNING_LOG.md).

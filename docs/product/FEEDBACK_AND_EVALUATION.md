@@ -79,6 +79,31 @@ The tool should not silently change behavior based on a few ratings. Use feedbac
 
 Only promote automated tuning after enough reviewed examples exist and the recommendation can be explained.
 
+## Learning Scopes
+
+Forest Labeler uses a four-scope intelligence model:
+
+1. **Project**: highest-trust evidence from the current project.
+2. **User**: optional evidence from compatible projects owned by the current
+   user.
+3. **Team**: approved, compatible evidence shared by an organization.
+4. **Universal**: a bundled baseline that gives first-time users useful default
+   behavior.
+
+Recommendation precedence is:
+
+```text
+project -> user -> team -> universal
+```
+
+Higher-trust evidence only overrides the universal baseline after minimum sample
+and compatibility checks pass. Compatibility includes workflow, algorithm
+version, ecosystem context, and CHM resolution where known.
+
+Universal and team contributions must be explicit opt-in. Forest Labeler must
+not silently upload project data, raw geometry, or personal paths. Shared
+learning should prefer approved summaries over raw project records.
+
 ## Event Store Foundation
 
 The event store links lifecycle events through a stable `attempt_id`:
