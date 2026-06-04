@@ -48,6 +48,7 @@ This layer should be covered by ordinary Python unit tests.
 - species layer queries
 - review actions against selected features
 - project-local feedback log writing
+- versioned SQLite feedback-event persistence
 
 This layer may call QGIS APIs directly, but it should avoid burying product
 decisions inside UI callbacks.
@@ -119,5 +120,11 @@ Forest Labeler records enough context to support future QA and learning:
 - QGIS internal feature ID only as debug context
 - canopy mode, strength/tightness, radius, area, apex height, species, and review
   status
+
+The project-local `forest_labeler_feedback.sqlite3` database is the durable
+source of truth for lifecycle events. The CSV learning log remains a readable
+compatibility export. Pure event identity, schema, and persistence behavior
+live in `forest_labeler_core/feedback_event_store.py`; QGIS adapters determine
+project-local paths and translate QGIS lifecycle activity into event records.
 
 See [Canopy Learning Log](../reference/CANOPY_LEARNING_LOG.md).

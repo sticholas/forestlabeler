@@ -38,7 +38,10 @@ Start simple and local:
 
 - Add review fields to output layers where available.
 - Add a small feedback panel for selected canopy features.
-- Store feedback as attributes or a sidecar GeoPackage table.
+- Store immutable lifecycle events in the project-local
+  `forest_labeler_feedback.sqlite3` database.
+- Keep `forest_labeler_canopy_attempts.csv` as a readable compatibility export,
+  not the source of truth.
 - Summarize feedback by mode and tightness.
 - Use `forest_labeler_core/feedback.py` for QGIS-independent feedback validation and summary rules.
 
@@ -75,3 +78,20 @@ The tool should not silently change behavior based on a few ratings. Use feedbac
 - "Multiple species conflicts are frequent in this layer."
 
 Only promote automated tuning after enough reviewed examples exist and the recommendation can be explained.
+
+## Event Store Foundation
+
+The event store links lifecycle events through a stable `attempt_id`:
+
+```text
+created -> accepted / rejected / unsure -> edited / removed
+```
+
+The initial SQLite schema contains:
+
+- `schema_version`: controlled schema evolution.
+- `attempts`: stable creation context and parameter settings.
+- `events`: immutable lifecycle observations.
+
+Deterministic event IDs make repeated QGIS lifecycle signals idempotent. This
+prevents duplicate observations from inflating future QA metrics.

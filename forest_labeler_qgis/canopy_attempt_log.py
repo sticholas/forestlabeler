@@ -17,6 +17,7 @@ from ..forest_labeler_core.canopy_attempt_log import (
     canopy_attempt_log_row,
     new_canopy_attempt_id,
 )
+from ..forest_labeler_core.feedback_event_store import append_feedback_event
 
 
 @dataclass(frozen=True)
@@ -129,6 +130,29 @@ def log_removed_canopy_attempt_from_record(record, note=None):
 
 
 def append_canopy_attempt_log(record):
+    event_store_path = _feedback_event_store_path()
+    event_store_result = append_feedback_event(event_store_path, record)
+    if not event_store_result.ok:
+        return CanopyAttemptLogResult(
+            False,
+            event_store_result.path,
+            event_store_result.errors,
+            (),
+        )
+
+    csv_result = _append_canopy_attempt_csv(record)
+    warnings = ()
+    if not csv_result.ok:
+        warnings = csv_result.errors
+    return CanopyAttemptLogResult(
+        True,
+        event_store_result.path,
+        (),
+        warnings,
+    )
+
+
+def _append_canopy_attempt_csv(record):
     path = _attempt_log_path()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -140,16 +164,24 @@ def append_canopy_attempt_log(record):
             writer.writerow(canopy_attempt_log_row(record))
         return CanopyAttemptLogResult(True, str(path), (), ())
     except Exception as exc:
-        return CanopyAttemptLogResult(False, str(path), (f"Could not write canopy attempt log: {exc}",), ())
+        return CanopyAttemptLogResult(False, str(path), (f"Could not write canopy attempt CSV export: {exc}",), ())
 
 
 def _attempt_log_path():
+    return _project_feedback_directory() / "forest_labeler_canopy_attempts.csv"
+
+
+def _feedback_event_store_path():
+    return _project_feedback_directory() / "forest_labeler_feedback.sqlite3"
+
+
+def _project_feedback_directory():
     project = QgsProject.instance()
     home_path = Path(project.homePath()) if project.homePath() else None
     if home_path is None or str(home_path) == ".":
         file_name = project.fileName()
         home_path = Path(file_name).parent if file_name else Path.home()
-    return home_path / "forest_labeler_canopy_attempts.csv"
+    return home_path
 
 
 def _should_write_header(path):
