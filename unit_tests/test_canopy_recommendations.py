@@ -4,6 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from forest_labeler_core.canopy_attempt_log import CanopyAttemptLogRecord
+from forest_labeler_core.canopy_attempt_log import CANOPY_ATTEMPT_REJECTED_REMOVED
 from forest_labeler_core.canopy_recommendations import (
     UNIVERSAL_CANOPY_MODE,
     UNIVERSAL_CROWN_TIGHTNESS,
@@ -50,6 +51,40 @@ class CanopyRecommendationsTest(unittest.TestCase):
         self.assertEqual(recommendation.evidence.canopy_mode, "DENSE")
         self.assertEqual(recommendation.evidence.crown_tightness, 17)
         self.assertIn("this project", recommendation.explanation)
+        self.assertIn("3 accepted, 0 rejected or removed", recommendation.explanation)
+
+    def test_removed_accepted_crown_reduces_recommendation_support(self):
+        for index in range(3):
+            created = self._record(
+                attempt_id=f"canopy-{index}",
+                event="created",
+                timestamp=f"2026-06-04T00:0{index}:00+00:00",
+            )
+            accepted = replace(
+                created,
+                event="accepted",
+                review_status="accepted",
+                timestamp_utc=f"2026-06-04T01:0{index}:00+00:00",
+            )
+            append_feedback_event(self.database_path, created)
+            append_feedback_event(self.database_path, accepted)
+            if index == 2:
+                append_feedback_event(
+                    self.database_path,
+                    replace(
+                        created,
+                        event=CANOPY_ATTEMPT_REJECTED_REMOVED,
+                        review_status="rejected",
+                        timestamp_utc="2026-06-04T02:00:00+00:00",
+                    ),
+                )
+
+        recommendation = recommend_canopy_setting(self.database_path, min_reviewed=3)
+
+        self.assertEqual(recommendation.evidence.accepted_total, 2)
+        self.assertEqual(recommendation.evidence.rejected_total, 1)
+        self.assertAlmostEqual(recommendation.evidence.accepted_rate, 2 / 3)
+        self.assertIn("2 accepted, 1 rejected or removed", recommendation.explanation)
 
     def _record(self, attempt_id, event, timestamp):
         return CanopyAttemptLogRecord(

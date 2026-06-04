@@ -267,4 +267,4 @@ def _project_file():
 
 
 def _utc_now():
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds")

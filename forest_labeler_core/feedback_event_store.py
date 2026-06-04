@@ -48,10 +48,11 @@ def append_feedback_event(path, record: CanopyAttemptLogRecord):
 
 
 def feedback_event_id(record: CanopyAttemptLogRecord):
-    """Return a deterministic ID so repeated lifecycle signals are idempotent."""
+    """Return a deterministic ID for one immutable lifecycle event."""
     identity = "|".join(
         (
             str(record.attempt_id),
+            str(record.timestamp_utc),
             str(record.event),
             str(record.note or ""),
             str(record.review_status or ""),
@@ -94,10 +95,12 @@ def recommendation_evidence_from_event_store(path, scope, context, source_label=
     grouped = {}
     for canopy_mode, crown_tightness, event_type in latest_by_attempt.values():
         key = (str(canopy_mode or ""), _int_or_zero(crown_tightness))
-        bucket = grouped.setdefault(key, {"reviewed": 0, "accepted": 0})
+        bucket = grouped.setdefault(key, {"reviewed": 0, "accepted": 0, "rejected": 0})
         bucket["reviewed"] += 1
         if event_type == CANOPY_ATTEMPT_ACCEPTED:
             bucket["accepted"] += 1
+        elif event_type in {CANOPY_ATTEMPT_REJECTED, CANOPY_ATTEMPT_REJECTED_REMOVED}:
+            bucket["rejected"] += 1
 
     return tuple(
         RecommendationEvidence(
@@ -108,6 +111,8 @@ def recommendation_evidence_from_event_store(path, scope, context, source_label=
             accepted_rate=summary["accepted"] / summary["reviewed"],
             context=context,
             source_label=source_label,
+            accepted_total=summary["accepted"],
+            rejected_total=summary["rejected"],
         )
         for (canopy_mode, crown_tightness), summary in sorted(grouped.items())
     )

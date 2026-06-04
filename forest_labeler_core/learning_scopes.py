@@ -35,6 +35,8 @@ class RecommendationEvidence:
     accepted_rate: float
     context: LearningContext | None = None
     source_label: str | None = None
+    accepted_total: int | None = None
+    rejected_total: int | None = None
 
 
 @dataclass(frozen=True)
@@ -114,10 +116,16 @@ def format_recommendation_explanation(evidence):
             "canopies are reviewed."
         )
     accepted_pct = round(evidence.accepted_rate * 100.0, 1)
+    outcome_summary = ""
+    if evidence.accepted_total is not None and evidence.rejected_total is not None:
+        outcome_summary = (
+            f" ({evidence.accepted_total} accepted, "
+            f"{evidence.rejected_total} rejected or removed)"
+        )
     return (
         f"Recommended {evidence.canopy_mode} mode at tightness {evidence.crown_tightness} "
         f"from {source}: {accepted_pct}% accepted across "
-        f"{evidence.reviewed_total} reviewed canopies."
+        f"{evidence.reviewed_total} reviewed canopies{outcome_summary}."
     )
 
 

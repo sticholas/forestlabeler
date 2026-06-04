@@ -86,10 +86,10 @@ class FeedbackEventStoreTest(unittest.TestCase):
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM attempts").fetchone()[0], 1)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0], 2)
 
-    def test_event_identity_is_stable_across_timestamps(self):
+    def test_event_identity_distinguishes_repeated_lifecycle_transitions(self):
         later_duplicate = replace(self.created_record, timestamp_utc="2026-06-04T00:05:00+00:00")
 
-        self.assertEqual(feedback_event_id(self.created_record), feedback_event_id(later_duplicate))
+        self.assertNotEqual(feedback_event_id(self.created_record), feedback_event_id(later_duplicate))
 
     def test_recommendation_evidence_uses_latest_review_event(self):
         accepted = replace(
@@ -117,6 +117,70 @@ class FeedbackEventStoreTest(unittest.TestCase):
         self.assertEqual(len(evidence), 1)
         self.assertEqual(evidence[0].reviewed_total, 1)
         self.assertEqual(evidence[0].accepted_rate, 0.0)
+        self.assertEqual(evidence[0].accepted_total, 0)
+        self.assertEqual(evidence[0].rejected_total, 1)
+
+    def test_removed_after_accept_no_longer_counts_as_accepted_support(self):
+        accepted = replace(
+            self.created_record,
+            event="accepted",
+            review_status="accepted",
+            timestamp_utc="2026-06-04T00:01:00+00:00",
+        )
+        removed = replace(
+            self.created_record,
+            event=CANOPY_ATTEMPT_REJECTED_REMOVED,
+            review_status="rejected",
+            timestamp_utc="2026-06-04T00:02:00+00:00",
+            note="Ctrl+Z quick reject",
+        )
+        append_feedback_event(self.database_path, self.created_record)
+        append_feedback_event(self.database_path, accepted)
+        append_feedback_event(self.database_path, removed)
+
+        evidence = recommendation_evidence_from_event_store(
+            self.database_path,
+            scope=SCOPE_PROJECT,
+            context=LearningContext("label_canopy", "canopy-v1"),
+        )
+
+        self.assertEqual(evidence[0].reviewed_total, 1)
+        self.assertEqual(evidence[0].accepted_total, 0)
+        self.assertEqual(evidence[0].rejected_total, 1)
+        self.assertEqual(evidence[0].accepted_rate, 0.0)
+
+    def test_repeated_remove_after_reaccept_is_not_collapsed(self):
+        first_removed = replace(
+            self.created_record,
+            event=CANOPY_ATTEMPT_REJECTED_REMOVED,
+            review_status="rejected",
+            timestamp_utc="2026-06-04T00:01:00+00:00",
+            note="Ctrl+Z quick reject",
+        )
+        accepted = replace(
+            self.created_record,
+            event="accepted",
+            review_status="accepted",
+            timestamp_utc="2026-06-04T00:02:00+00:00",
+        )
+        second_removed = replace(
+            first_removed,
+            timestamp_utc="2026-06-04T00:03:00+00:00",
+        )
+        for record in (self.created_record, first_removed, accepted, second_removed):
+            append_feedback_event(self.database_path, record)
+
+        with sqlite3.connect(self.database_path) as connection:
+            event_count = connection.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+        evidence = recommendation_evidence_from_event_store(
+            self.database_path,
+            scope=SCOPE_PROJECT,
+            context=LearningContext("label_canopy", "canopy-v1"),
+        )
+
+        self.assertEqual(event_count, 4)
+        self.assertEqual(evidence[0].accepted_total, 0)
+        self.assertEqual(evidence[0].rejected_total, 1)
 
     def test_qvariant_like_values_are_normalized_before_sqlite_write(self):
         wrapped_record = replace(
