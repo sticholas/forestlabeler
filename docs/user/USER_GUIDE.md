@@ -89,6 +89,13 @@ Accept, Reject, and Unsure actions are stored as durable lifecycle events. This
 allows project recommendations to improve over time while preserving a clear
 record of why a setting was recommended.
 
+Forest Labeler also observes lifecycle changes made through normal QGIS tools.
+Deleting one or many tracked canopy features updates **Use Best Setting**
+evidence, and changing `review_status` directly in the attribute table is
+recorded too. Undoing a deletion restores the crown's latest review state, so
+recommendations follow the current project state while the complete history
+remains available for audit and future learning.
+
 ## Create Training Polygon
 
 Use **Training Polygon** to create configurable training areas.

@@ -127,5 +127,13 @@ The initial SQLite schema contains:
 - `attempts`: stable creation context and parameter settings.
 - `events`: immutable lifecycle observations.
 
-Deterministic event IDs make repeated QGIS lifecycle signals idempotent. This
-prevents duplicate observations from inflating future QA metrics.
+Deterministic event IDs distinguish immutable lifecycle transitions, while
+latest-state checks suppress duplicate signals for the same transition. This
+prevents duplicate observations from inflating future QA metrics without
+discarding useful history.
+
+The selected canopy target layer is observed for normal QGIS mutations. Plugin
+buttons, Ctrl+Z quick reject, toolbar or attribute-table deletion, bulk
+deletion, direct review-status edits, and deletion undo/restoration all update
+the same attempt lifecycle. Recommendation evidence always uses the latest
+meaningful state for each stable `attempt_id`.

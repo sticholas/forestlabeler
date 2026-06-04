@@ -68,6 +68,7 @@ from .forest_labeler_qgis.canopy_review import (
     select_canopies_by_review_filter,
     summarize_canopy_layer_reviews,
 )
+from .forest_labeler_qgis.canopy_deletion_monitor import CanopyDeletionMonitor
 from .forest_labeler_qgis.canopy_schema import missing_canopy_schema_fields, repair_canopy_schema
 from .forest_labeler_qgis.training_polygon_schema import (
     missing_training_polygon_schema_fields,
@@ -104,6 +105,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self.canopyDeletionMonitor = CanopyDeletionMonitor(iface=self.iface)
         self._apply_product_styling()
         self._populate_canopy_modes()
         self._populate_training_polygon_presets()
@@ -112,6 +114,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.trainingPolygonPresetComboBox.currentIndexChanged.connect(self._apply_training_polygon_preset)
         self.crownTightnessSlider.valueChanged.connect(self._update_crown_tightness_display)
         self.refreshLayersButton.clicked.connect(self.refresh_layers)
+        self.targetLayerComboBox.currentIndexChanged.connect(self._watch_canopy_target_layer)
         self.validateProjectButton.clicked.connect(self.validate_project)
         self.activateLabelingButton.clicked.connect(self._request_labeling)
         self.canopyReviewToolsCheckBox.toggled.connect(self._update_canopy_review_controls)
@@ -192,6 +195,11 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.statusSummaryLabel.setText("Project not validated.")
         self.statusTextEdit.clear()
         self.statusTextEdit.setVisible(False)
+        self._watch_canopy_target_layer()
+
+    def _watch_canopy_target_layer(self, *_args):
+        """Observe every deletion path on the selected canopy target layer."""
+        self.canopyDeletionMonitor.watch(self._current_layer(self.targetLayerComboBox))
 
     def validate_project(self):
         """Validate selected layers and report whether labeling can start."""
@@ -585,6 +593,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 return
 
         result = repair_canopy_schema(layer)
+        self._watch_canopy_target_layer()
         if result.ok and result.added_fields:
             self.statusSummaryLabel.setText(f"Added {len(result.added_fields)} canopy field(s).")
             self.statusTextEdit.setPlainText(", ".join(result.added_fields))

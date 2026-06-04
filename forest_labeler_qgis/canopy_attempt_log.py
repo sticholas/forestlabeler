@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -14,13 +15,14 @@ from ..forest_labeler_core.canopy_attempt_log import (
     CANOPY_ATTEMPT_CREATED,
     CANOPY_ATTEMPT_REJECTED,
     CANOPY_ATTEMPT_REJECTED_REMOVED,
+    CANOPY_ATTEMPT_RESTORED,
     CANOPY_ATTEMPT_UNSURE,
     CanopyAttemptLogRecord,
     canopy_attempt_log_fieldnames,
     canopy_attempt_log_row,
     new_canopy_attempt_id,
 )
-from ..forest_labeler_core.feedback_event_store import append_feedback_event
+from ..forest_labeler_core.feedback_event_store import append_feedback_event, latest_feedback_event_type
 
 
 @dataclass(frozen=True)
@@ -119,16 +121,20 @@ def log_reviewed_canopy_attempt(layer, feature, status, note=None):
             ("Canopy review event must be accepted, rejected, or unsure.",),
             (),
         )
-
     fields = layer.fields()
 
     def attr(field_name):
         index = fields.indexOf(field_name)
         return feature[index] if index != -1 else None
 
+    attempt_id = attr("attempt_id")
+    event_store_path = feedback_event_store_path()
+    if attempt_id and latest_feedback_event_type(event_store_path, attempt_id) == event:
+        return CanopyAttemptLogResult(True, str(event_store_path), (), ())
+
     return append_canopy_attempt_log(
         CanopyAttemptLogRecord(
-            attempt_id=attr("attempt_id") or new_canopy_attempt_id(),
+            attempt_id=attempt_id or new_canopy_attempt_id(),
             timestamp_utc=_utc_now(),
             event=event,
             project_id=_project_id(),
@@ -154,6 +160,9 @@ def log_reviewed_canopy_attempt(layer, feature, status, note=None):
 
 def log_removed_canopy_attempt_from_record(record, note=None):
     """Log a rejected/removal event from a cached created-attempt record."""
+    event_store_path = feedback_event_store_path()
+    if latest_feedback_event_type(event_store_path, record.attempt_id) == CANOPY_ATTEMPT_REJECTED_REMOVED:
+        return CanopyAttemptLogResult(True, str(event_store_path), (), ())
     return append_canopy_attempt_log(
         CanopyAttemptLogRecord(
             attempt_id=record.attempt_id,
@@ -177,6 +186,58 @@ def log_removed_canopy_attempt_from_record(record, note=None):
             review_status="rejected",
             note=note,
         )
+    )
+
+
+def log_restored_canopy_attempt_from_record(record, note=None):
+    """Record that QGIS restored a previously deleted canopy."""
+    status = str(record.review_status or "").strip().lower()
+    event = {
+        "accepted": CANOPY_ATTEMPT_ACCEPTED,
+        "rejected": CANOPY_ATTEMPT_REJECTED,
+        "unsure": CANOPY_ATTEMPT_UNSURE,
+    }.get(status, CANOPY_ATTEMPT_RESTORED)
+    return append_canopy_attempt_log(
+        replace(
+            record,
+            timestamp_utc=_utc_now(),
+            event=event,
+            note=note,
+        )
+    )
+
+
+def canopy_attempt_record_from_feature(layer, feature, event=CANOPY_ATTEMPT_CREATED):
+    """Build a stable lifecycle snapshot from an existing Forest Labeler crown."""
+    fields = layer.fields()
+
+    def attr(field_name):
+        index = fields.indexOf(field_name)
+        return feature[index] if index != -1 else None
+
+    attempt_id = attr("attempt_id")
+    if not attempt_id:
+        return None
+    return CanopyAttemptLogRecord(
+        attempt_id=str(attempt_id),
+        timestamp_utc=_utc_now(),
+        event=event,
+        project_id=_project_id(),
+        project_file=_project_file(),
+        layer_id=layer.id(),
+        layer_name=layer.name(),
+        canopy_fid=attr("fid"),
+        qgis_feature_id=feature.id(),
+        canopy_mode=attr("mode"),
+        crown_tightness=attr("tightness"),
+        seed_radius_m=attr("radius_m"),
+        area_m2=attr("area_m2"),
+        apex_height_m=attr("apex_h"),
+        refined=attr("refined"),
+        chm_id=attr("chm_id"),
+        ortho_id=attr("ortho_id"),
+        species=attr("species"),
+        review_status=attr("review_status"),
     )
 
 

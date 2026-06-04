@@ -13,7 +13,7 @@ from qgis.gui import QgsMapTool, QgsRubberBand
 from ..forest_labeler_core.canopy_attempt_log import new_canopy_attempt_id
 from ..forest_labeler_core.canopy_presets import build_canopy_parameters
 from ..forest_labeler_core.raster_sources import is_probable_ortho_source
-from .canopy_attempt_log import created_canopy_attempt_record, log_removed_canopy_attempt_from_record
+from .canopy_attempt_log import created_canopy_attempt_record
 from .canopy_service import CanopyCreationRequest, create_canopy_feature
 from .canopy_review import reject_and_remove_recent_canopy, reject_and_remove_selected_canopies
 from .crown_preview_service import (
@@ -51,8 +51,6 @@ class CanopyLabelMapTool(QgsMapTool):
         self.quick_reject_filter_active = False
         self.last_created_feature_id = None
         self.last_created_attempt_id = None
-        self.created_attempt_records_by_feature_id = {}
-        self.deletion_monitor_layer = None
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.grow_circle)
@@ -78,7 +76,6 @@ class CanopyLabelMapTool(QgsMapTool):
 
     def deactivate(self):
         self._disable_quick_reject_shortcut()
-        self._disconnect_deletion_monitor()
         self.stop_hold()
         self.preview_band.hide()
         super().deactivate()
@@ -312,49 +309,9 @@ class CanopyLabelMapTool(QgsMapTool):
             creation,
         )
         self.last_created_attempt_id = record.attempt_id
-        self.created_attempt_records_by_feature_id[creation.feature_id] = record
-        self._connect_deletion_monitor(creation_request.target_layer)
 
     def _forget_created_attempt_records(self, feature_ids):
-        for feature_id in feature_ids:
-            if feature_id is None:
-                continue
-            self.created_attempt_records_by_feature_id.pop(feature_id, None)
-
-    def _connect_deletion_monitor(self, layer):
-        if layer is None or layer is self.deletion_monitor_layer:
-            return
-        self._disconnect_deletion_monitor()
-        try:
-            layer.featureDeleted.connect(self._handle_feature_deleted)
-            self.deletion_monitor_layer = layer
-        except Exception:
-            self.deletion_monitor_layer = None
-
-    def _disconnect_deletion_monitor(self):
-        if self.deletion_monitor_layer is None:
-            return
-        try:
-            self.deletion_monitor_layer.featureDeleted.disconnect(self._handle_feature_deleted)
-        except Exception:
-            pass
-        self.deletion_monitor_layer = None
-
-    def _handle_feature_deleted(self, feature_id):
-        record = self.created_attempt_records_by_feature_id.pop(feature_id, None)
-        if record is None:
-            return
-        log_result = log_removed_canopy_attempt_from_record(
-            record,
-            note="QGIS undo/delete observed",
-        )
-        if log_result.ok:
-            self.iface.messageBar().pushInfo(
-                "Forest Labeler",
-                "Observed removed canopy attempt and logged it for QA.",
-            )
-        else:
-            self.iface.messageBar().pushWarning("Forest Labeler", " ".join(log_result.errors))
+        return None
 
     def _enable_quick_reject_shortcut(self):
         if self.quick_reject_filter_active:

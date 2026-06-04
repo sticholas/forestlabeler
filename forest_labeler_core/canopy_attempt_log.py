@@ -11,6 +11,7 @@ CANOPY_ATTEMPT_REJECTED_REMOVED = "rejected_removed"
 CANOPY_ATTEMPT_ACCEPTED = "accepted"
 CANOPY_ATTEMPT_REJECTED = "rejected"
 CANOPY_ATTEMPT_UNSURE = "unsure"
+CANOPY_ATTEMPT_RESTORED = "restored"
 
 
 @dataclass(frozen=True)

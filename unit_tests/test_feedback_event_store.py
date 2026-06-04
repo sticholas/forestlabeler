@@ -7,12 +7,14 @@ from pathlib import Path
 from forest_labeler_core.canopy_attempt_log import (
     CANOPY_ATTEMPT_CREATED,
     CANOPY_ATTEMPT_REJECTED_REMOVED,
+    CANOPY_ATTEMPT_RESTORED,
     CanopyAttemptLogRecord,
 )
 from forest_labeler_core.feedback_event_store import (
     SCHEMA_VERSION,
     append_feedback_event,
     feedback_event_id,
+    latest_feedback_event_type,
     recommendation_evidence_from_event_store,
 )
 from forest_labeler_core.learning_scopes import LearningContext, SCOPE_PROJECT
@@ -85,6 +87,10 @@ class FeedbackEventStoreTest(unittest.TestCase):
         with sqlite3.connect(self.database_path) as connection:
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM attempts").fetchone()[0], 1)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0], 2)
+        self.assertEqual(
+            latest_feedback_event_type(self.database_path, self.created_record.attempt_id),
+            CANOPY_ATTEMPT_REJECTED_REMOVED,
+        )
 
     def test_event_identity_distinguishes_repeated_lifecycle_transitions(self):
         later_duplicate = replace(self.created_record, timestamp_utc="2026-06-04T00:05:00+00:00")
@@ -181,6 +187,30 @@ class FeedbackEventStoreTest(unittest.TestCase):
         self.assertEqual(event_count, 4)
         self.assertEqual(evidence[0].accepted_total, 0)
         self.assertEqual(evidence[0].rejected_total, 1)
+
+    def test_restored_unreviewed_crown_no_longer_counts_as_rejected(self):
+        removed = replace(
+            self.created_record,
+            event=CANOPY_ATTEMPT_REJECTED_REMOVED,
+            review_status="rejected",
+            timestamp_utc="2026-06-04T00:01:00+00:00",
+        )
+        restored = replace(
+            self.created_record,
+            event=CANOPY_ATTEMPT_RESTORED,
+            review_status="unreviewed",
+            timestamp_utc="2026-06-04T00:02:00+00:00",
+        )
+        for record in (self.created_record, removed, restored):
+            append_feedback_event(self.database_path, record)
+
+        evidence = recommendation_evidence_from_event_store(
+            self.database_path,
+            scope=SCOPE_PROJECT,
+            context=LearningContext("label_canopy", "canopy-v1"),
+        )
+
+        self.assertEqual(evidence, ())
 
     def test_qvariant_like_values_are_normalized_before_sqlite_write(self):
         wrapped_record = replace(
