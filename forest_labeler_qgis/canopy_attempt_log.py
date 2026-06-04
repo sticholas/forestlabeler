@@ -35,30 +35,34 @@ def log_created_canopy_attempt(request, creation_result):
     if not creation_result.ok or creation_result.write_result is None:
         return CanopyAttemptLogResult(True, None, (), ())
 
+    record = created_canopy_attempt_record(request, creation_result)
+    return append_canopy_attempt_log(record)
+
+
+def created_canopy_attempt_record(request, creation_result):
+    """Build the created-attempt record for logging and deletion monitoring."""
     write_result = creation_result.write_result
     values = write_result.attribute_plan.values if write_result.attribute_plan else {}
-    return append_canopy_attempt_log(
-        CanopyAttemptLogRecord(
-            attempt_id=values.get("attempt_id") or request.attempt_id or new_canopy_attempt_id(),
-            timestamp_utc=_utc_now(),
-            event=CANOPY_ATTEMPT_CREATED,
-            project_id=_project_id(),
-            project_file=_project_file(),
-            layer_id=request.target_layer.id() if request.target_layer is not None else "",
-            layer_name=request.target_layer.name() if request.target_layer is not None else "",
-            canopy_fid=values.get("fid"),
-            qgis_feature_id=creation_result.feature_id,
-            canopy_mode=request.canopy_mode,
-            crown_tightness=request.crown_tightness,
-            seed_radius_m=request.seed_radius_m,
-            area_m2=values.get("area_m2"),
-            apex_height_m=request.apex_height_m,
-            refined=request.refined,
-            chm_id=request.chm_id,
-            ortho_id=request.ortho_id,
-            species=values.get("species"),
-            review_status=values.get("review_status"),
-        )
+    return CanopyAttemptLogRecord(
+        attempt_id=values.get("attempt_id") or request.attempt_id or new_canopy_attempt_id(),
+        timestamp_utc=_utc_now(),
+        event=CANOPY_ATTEMPT_CREATED,
+        project_id=_project_id(),
+        project_file=_project_file(),
+        layer_id=request.target_layer.id() if request.target_layer is not None else "",
+        layer_name=request.target_layer.name() if request.target_layer is not None else "",
+        canopy_fid=values.get("fid"),
+        qgis_feature_id=creation_result.feature_id,
+        canopy_mode=request.canopy_mode,
+        crown_tightness=request.crown_tightness,
+        seed_radius_m=request.seed_radius_m,
+        area_m2=values.get("area_m2"),
+        apex_height_m=request.apex_height_m,
+        refined=request.refined,
+        chm_id=request.chm_id,
+        ortho_id=request.ortho_id,
+        species=values.get("species"),
+        review_status=values.get("review_status"),
     )
 
 
@@ -90,6 +94,34 @@ def log_removed_canopy_attempt(layer, feature, note=None):
             chm_id=attr("chm_id"),
             ortho_id=attr("ortho_id"),
             species=attr("species"),
+            review_status="rejected",
+            note=note,
+        )
+    )
+
+
+def log_removed_canopy_attempt_from_record(record, note=None):
+    """Log a rejected/removal event from a cached created-attempt record."""
+    return append_canopy_attempt_log(
+        CanopyAttemptLogRecord(
+            attempt_id=record.attempt_id,
+            timestamp_utc=_utc_now(),
+            event=CANOPY_ATTEMPT_REJECTED_REMOVED,
+            project_id=record.project_id,
+            project_file=record.project_file,
+            layer_id=record.layer_id,
+            layer_name=record.layer_name,
+            canopy_fid=record.canopy_fid,
+            qgis_feature_id=record.qgis_feature_id,
+            canopy_mode=record.canopy_mode,
+            crown_tightness=record.crown_tightness,
+            seed_radius_m=record.seed_radius_m,
+            area_m2=record.area_m2,
+            apex_height_m=record.apex_height_m,
+            refined=record.refined,
+            chm_id=record.chm_id,
+            ortho_id=record.ortho_id,
+            species=record.species,
             review_status="rejected",
             note=note,
         )

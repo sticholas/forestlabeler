@@ -10,8 +10,10 @@ from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.core import QgsCoordinateTransform, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsWkbTypes
 from qgis.gui import QgsMapTool, QgsRubberBand
 
+from ..forest_labeler_core.canopy_attempt_log import new_canopy_attempt_id
 from ..forest_labeler_core.canopy_presets import build_canopy_parameters
 from ..forest_labeler_core.raster_sources import is_probable_ortho_source
+from .canopy_attempt_log import created_canopy_attempt_record, log_removed_canopy_attempt_from_record
 from .canopy_service import CanopyCreationRequest, create_canopy_feature
 from .canopy_review import reject_and_remove_recent_canopy, reject_and_remove_selected_canopies
 from .crown_preview_service import (
@@ -49,6 +51,8 @@ class CanopyLabelMapTool(QgsMapTool):
         self.quick_reject_filter_active = False
         self.last_created_feature_id = None
         self.last_created_attempt_id = None
+        self.created_attempt_records_by_feature_id = {}
+        self.deletion_monitor_layer = None
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.grow_circle)
@@ -74,6 +78,7 @@ class CanopyLabelMapTool(QgsMapTool):
 
     def deactivate(self):
         self._disable_quick_reject_shortcut()
+        self._disconnect_deletion_monitor()
         self.stop_hold()
         self.preview_band.hide()
         super().deactivate()
@@ -136,23 +141,23 @@ class CanopyLabelMapTool(QgsMapTool):
             return
 
         build_result = self.current_build_result
-        creation = create_canopy_feature(
-            CanopyCreationRequest(
-                target_layer=self.settings.target_layer,
-                geometry=self.current_geometry,
-                seed_radius_m=self.current_radius_m,
-                canopy_mode=self.settings.canopy_mode,
-                crown_tightness=self.settings.crown_tightness,
-                refined=1 if build_result is not None and build_result.refined else 0,
-                apex_height_m=build_result.apex_height_m if build_result is not None else None,
-                species_layer=self.settings.species_layer,
-                chm_id=self._layer_source(self.settings.chm_layer),
-                ortho_id=self._find_ortho_source(self.center_project),
-            )
+        creation_request = CanopyCreationRequest(
+            target_layer=self.settings.target_layer,
+            geometry=self.current_geometry,
+            seed_radius_m=self.current_radius_m,
+            canopy_mode=self.settings.canopy_mode,
+            crown_tightness=self.settings.crown_tightness,
+            refined=1 if build_result is not None and build_result.refined else 0,
+            apex_height_m=build_result.apex_height_m if build_result is not None else None,
+            species_layer=self.settings.species_layer,
+            chm_id=self._layer_source(self.settings.chm_layer),
+            ortho_id=self._find_ortho_source(self.center_project),
+            attempt_id=new_canopy_attempt_id(),
         )
+        creation = create_canopy_feature(creation_request)
 
         if creation.ok:
-            self._remember_created_canopy(creation)
+            self._remember_created_canopy(creation_request, creation)
             self.canvas.refresh()
             self.iface.messageBar().pushSuccess(
                 "Forest Labeler",
@@ -264,12 +269,15 @@ class CanopyLabelMapTool(QgsMapTool):
         if target_layer is None:
             return False
 
-        if target_layer.selectedFeatureIds():
+        selected_ids = tuple(target_layer.selectedFeatureIds())
+        if selected_ids:
+            self._forget_created_attempt_records(selected_ids)
             result = reject_and_remove_selected_canopies(
                 target_layer,
                 note="Ctrl+Z quick reject",
             )
         else:
+            self._forget_created_attempt_records((self.last_created_feature_id,))
             result = reject_and_remove_recent_canopy(
                 target_layer,
                 feature_id=self.last_created_feature_id,
@@ -294,12 +302,59 @@ class CanopyLabelMapTool(QgsMapTool):
         )
         return True
 
-    def _remember_created_canopy(self, creation):
+    def _remember_created_canopy(self, creation_request, creation):
         self.last_created_feature_id = creation.feature_id
         self.last_created_attempt_id = None
         if creation.write_result is None or creation.write_result.attribute_plan is None:
             return
-        self.last_created_attempt_id = creation.write_result.attribute_plan.values.get("attempt_id")
+        record = created_canopy_attempt_record(
+            creation_request,
+            creation,
+        )
+        self.last_created_attempt_id = record.attempt_id
+        self.created_attempt_records_by_feature_id[creation.feature_id] = record
+        self._connect_deletion_monitor(creation_request.target_layer)
+
+    def _forget_created_attempt_records(self, feature_ids):
+        for feature_id in feature_ids:
+            if feature_id is None:
+                continue
+            self.created_attempt_records_by_feature_id.pop(feature_id, None)
+
+    def _connect_deletion_monitor(self, layer):
+        if layer is None or layer is self.deletion_monitor_layer:
+            return
+        self._disconnect_deletion_monitor()
+        try:
+            layer.featureDeleted.connect(self._handle_feature_deleted)
+            self.deletion_monitor_layer = layer
+        except Exception:
+            self.deletion_monitor_layer = None
+
+    def _disconnect_deletion_monitor(self):
+        if self.deletion_monitor_layer is None:
+            return
+        try:
+            self.deletion_monitor_layer.featureDeleted.disconnect(self._handle_feature_deleted)
+        except Exception:
+            pass
+        self.deletion_monitor_layer = None
+
+    def _handle_feature_deleted(self, feature_id):
+        record = self.created_attempt_records_by_feature_id.pop(feature_id, None)
+        if record is None:
+            return
+        log_result = log_removed_canopy_attempt_from_record(
+            record,
+            note="QGIS undo/delete observed",
+        )
+        if log_result.ok:
+            self.iface.messageBar().pushInfo(
+                "Forest Labeler",
+                "Observed removed canopy attempt and logged it for QA.",
+            )
+        else:
+            self.iface.messageBar().pushWarning("Forest Labeler", " ".join(log_result.errors))
 
     def _enable_quick_reject_shortcut(self):
         if self.quick_reject_filter_active:
