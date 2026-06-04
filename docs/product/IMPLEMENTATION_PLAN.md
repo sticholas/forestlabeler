@@ -144,6 +144,11 @@ Implementation:
 - Store immutable feedback events in a versioned project-local SQLite database.
 - Keep CSV as a readable compatibility export.
 - Link lifecycle events through stable attempt IDs and make repeated signals idempotent.
+- Ship a versioned universal baseline for useful first-run recommendations.
+- Prefer compatible project, user, and approved team evidence over the
+  universal baseline only after minimum sample thresholds pass.
+- Require explicit opt-in before contributing sanitized summaries to team or
+  universal learning.
 - Track correction reasons:
   - too large
   - too small
