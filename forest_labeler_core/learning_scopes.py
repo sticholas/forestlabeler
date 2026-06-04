@@ -106,8 +106,14 @@ def allowed_contribution_scopes(policy: SharingPolicy):
 
 
 def format_recommendation_explanation(evidence):
-    accepted_pct = round(evidence.accepted_rate * 100.0, 1)
     source = evidence.source_label or f"{evidence.scope} evidence"
+    if evidence.scope == SCOPE_UNIVERSAL and evidence.reviewed_total == 0:
+        return (
+            f"Recommended {evidence.canopy_mode} mode at tightness {evidence.crown_tightness} "
+            f"from {source}. This starter setting will adapt after enough compatible "
+            "canopies are reviewed."
+        )
+    accepted_pct = round(evidence.accepted_rate * 100.0, 1)
     return (
         f"Recommended {evidence.canopy_mode} mode at tightness {evidence.crown_tightness} "
         f"from {source}: {accepted_pct}% accepted across "

@@ -7,7 +7,14 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from .canopy_attempt_log import CanopyAttemptLogRecord
+from .canopy_attempt_log import (
+    CANOPY_ATTEMPT_ACCEPTED,
+    CANOPY_ATTEMPT_REJECTED,
+    CANOPY_ATTEMPT_REJECTED_REMOVED,
+    CANOPY_ATTEMPT_UNSURE,
+    CanopyAttemptLogRecord,
+)
+from .learning_scopes import RecommendationEvidence
 
 
 SCHEMA_VERSION = 1
@@ -51,6 +58,59 @@ def feedback_event_id(record: CanopyAttemptLogRecord):
         )
     )
     return hashlib.sha256(identity.encode("utf-8")).hexdigest()
+
+
+def recommendation_evidence_from_event_store(path, scope, context, source_label=None):
+    """Return reviewed canopy-tool evidence grouped by mode and tightness."""
+    database_path = Path(path)
+    if not database_path.exists():
+        return ()
+
+    with sqlite3.connect(str(database_path)) as connection:
+        rows = connection.execute(
+            """
+            SELECT
+                attempts.attempt_id,
+                attempts.canopy_mode,
+                attempts.crown_tightness,
+                events.event_type
+            FROM attempts
+            JOIN events ON events.attempt_id = attempts.attempt_id
+            WHERE events.event_type IN (?, ?, ?, ?)
+            ORDER BY events.timestamp_utc, events.rowid
+            """,
+            (
+                CANOPY_ATTEMPT_ACCEPTED,
+                CANOPY_ATTEMPT_REJECTED,
+                CANOPY_ATTEMPT_UNSURE,
+                CANOPY_ATTEMPT_REJECTED_REMOVED,
+            ),
+        ).fetchall()
+
+    latest_by_attempt = {}
+    for attempt_id, canopy_mode, crown_tightness, event_type in rows:
+        latest_by_attempt[attempt_id] = (canopy_mode, crown_tightness, event_type)
+
+    grouped = {}
+    for canopy_mode, crown_tightness, event_type in latest_by_attempt.values():
+        key = (str(canopy_mode or ""), _int_or_zero(crown_tightness))
+        bucket = grouped.setdefault(key, {"reviewed": 0, "accepted": 0})
+        bucket["reviewed"] += 1
+        if event_type == CANOPY_ATTEMPT_ACCEPTED:
+            bucket["accepted"] += 1
+
+    return tuple(
+        RecommendationEvidence(
+            scope=scope,
+            canopy_mode=canopy_mode,
+            crown_tightness=crown_tightness,
+            reviewed_total=summary["reviewed"],
+            accepted_rate=summary["accepted"] / summary["reviewed"],
+            context=context,
+            source_label=source_label,
+        )
+        for (canopy_mode, crown_tightness), summary in sorted(grouped.items())
+    )
 
 
 def _initialize_schema(connection):
@@ -178,3 +238,10 @@ def _insert_event(connection, record):
         ),
     )
     return cursor.rowcount > 0
+
+
+def _int_or_zero(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0

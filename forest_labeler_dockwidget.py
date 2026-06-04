@@ -61,7 +61,7 @@ from .forest_labeler_qgis.canopy_review import (
     REVIEW_STATUS_ACCEPTED as CANOPY_REVIEW_ACCEPTED,
     REVIEW_STATUS_REJECTED as CANOPY_REVIEW_REJECTED,
     REVIEW_STATUS_UNSURE as CANOPY_REVIEW_UNSURE,
-    best_canopy_layer_recommendation,
+    best_canopy_event_recommendation,
     canopy_layer_quality_insight_lines,
     mark_selected_canopies,
     reject_and_remove_selected_canopies,
@@ -673,9 +673,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def _use_best_canopy_tool(self):
         try:
-            recommendation = best_canopy_layer_recommendation(
-                self._current_layer(self.targetLayerComboBox)
-            )
+            recommendation = best_canopy_event_recommendation()
         except ValueError as exc:
             self.statusSummaryLabel.setText("Could not find a reviewed canopy tool setting.")
             self.statusTextEdit.setPlainText(str(exc))
@@ -683,23 +681,13 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self._push_message("Canopy recommendation failed.", Qgis.Warning)
             return
 
-        if recommendation is None:
-            self.statusSummaryLabel.setText("No reviewed canopy tool setting is ready yet.")
-            self.statusTextEdit.setPlainText(
-                "Review at least 3 canopies with the same mode and tightness before using a best tool setting."
-            )
-            self.statusTextEdit.setVisible(True)
-            self._push_message("Canopy recommendation needs more reviewed examples.", Qgis.Info)
-            return
-
-        accepted_pct = round(recommendation.accepted_rate * 100.0, 1)
+        evidence = recommendation.evidence
         answer = QtWidgets.QMessageBox.question(
             self,
             "Use Best Canopy Tool",
             (
-                "Apply this reviewed canopy setting to the Label Canopy controls?\n\n"
-                f"{recommendation.canopy_mode}, tightness {recommendation.crown_tightness}\n"
-                f"{accepted_pct}% accepted across {recommendation.reviewed_total} reviewed canopies."
+                "Apply this explainable recommendation to the Label Canopy controls?\n\n"
+                f"{recommendation.explanation}"
             ),
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
             QtWidgets.QMessageBox.Yes,
@@ -707,19 +695,17 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if answer != QtWidgets.QMessageBox.Yes:
             return
 
-        mode_index = self.canopyModeComboBox.findText(recommendation.canopy_mode)
+        mode_index = self.canopyModeComboBox.findText(evidence.canopy_mode)
         if mode_index != -1:
             self.canopyModeComboBox.setCurrentIndex(mode_index)
-        if recommendation.crown_tightness is not None:
+        if evidence.crown_tightness is not None:
             self.crownTightnessSlider.setValue(
-                crown_tightness_to_percent(recommendation.crown_tightness)
+                crown_tightness_to_percent(evidence.crown_tightness)
             )
-        self.statusSummaryLabel.setText("Best reviewed canopy tool setting applied.")
-        self.statusTextEdit.setPlainText(
-            f"{recommendation.canopy_mode}, tightness {recommendation.crown_tightness}"
-        )
+        self.statusSummaryLabel.setText("Explainable canopy recommendation applied.")
+        self.statusTextEdit.setPlainText(recommendation.explanation)
         self.statusTextEdit.setVisible(True)
-        self._push_message("Best reviewed canopy tool setting applied.", Qgis.Success)
+        self._push_message("Canopy recommendation applied.", Qgis.Success)
 
     def _update_canopy_review_controls(self):
         show_review = self.canopyReviewToolsCheckBox.isChecked()

@@ -13,7 +13,9 @@ from forest_labeler_core.feedback_event_store import (
     SCHEMA_VERSION,
     append_feedback_event,
     feedback_event_id,
+    recommendation_evidence_from_event_store,
 )
+from forest_labeler_core.learning_scopes import LearningContext, SCOPE_PROJECT
 
 
 class FeedbackEventStoreTest(unittest.TestCase):
@@ -88,6 +90,33 @@ class FeedbackEventStoreTest(unittest.TestCase):
         later_duplicate = replace(self.created_record, timestamp_utc="2026-06-04T00:05:00+00:00")
 
         self.assertEqual(feedback_event_id(self.created_record), feedback_event_id(later_duplicate))
+
+    def test_recommendation_evidence_uses_latest_review_event(self):
+        accepted = replace(
+            self.created_record,
+            event="accepted",
+            review_status="accepted",
+            timestamp_utc="2026-06-04T00:01:00+00:00",
+        )
+        rejected = replace(
+            self.created_record,
+            event="rejected",
+            review_status="rejected",
+            timestamp_utc="2026-06-04T00:02:00+00:00",
+        )
+        append_feedback_event(self.database_path, self.created_record)
+        append_feedback_event(self.database_path, accepted)
+        append_feedback_event(self.database_path, rejected)
+
+        evidence = recommendation_evidence_from_event_store(
+            self.database_path,
+            scope=SCOPE_PROJECT,
+            context=LearningContext("label_canopy", "canopy-v1"),
+        )
+
+        self.assertEqual(len(evidence), 1)
+        self.assertEqual(evidence[0].reviewed_total, 1)
+        self.assertEqual(evidence[0].accepted_rate, 0.0)
 
 
 if __name__ == "__main__":

@@ -50,6 +50,9 @@ Open **Review & QA** to mark selected canopy polygons:
 - **Unsure**: needs another look.
 - **Reject + Remove**: logs the rejected attempt, then removes it from the clean
   target layer.
+- **Use Best Setting**: applies an explainable project recommendation when
+  enough reviewed evidence exists, otherwise applies the Forest Labeler
+  universal baseline.
 
 While **Label Canopy** is active, `Ctrl+Z` is a quick reject/remove shortcut for
 the currently selected canopy. It writes the rejected attempt to the feedback
@@ -79,8 +82,12 @@ Key identity fields:
 - `project_id`: stable project identity stored as a QGIS project variable.
 
 Forest Labeler keeps reject/remove actions log-first. If a rejected attempt
-cannot be written to the feedback CSV, the canopy feature is kept so the
+cannot be written to the feedback event store, the canopy feature is kept so the
 training evidence is not lost silently.
+
+Accept, Reject, and Unsure actions are stored as durable lifecycle events. This
+allows project recommendations to improve over time while preserving a clear
+record of why a setting was recommended.
 
 ## Create Training Polygon
 

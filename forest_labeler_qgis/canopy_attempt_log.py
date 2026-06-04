@@ -10,8 +10,11 @@ from pathlib import Path
 from qgis.core import QgsExpressionContextUtils, QgsProject
 
 from ..forest_labeler_core.canopy_attempt_log import (
+    CANOPY_ATTEMPT_ACCEPTED,
     CANOPY_ATTEMPT_CREATED,
+    CANOPY_ATTEMPT_REJECTED,
     CANOPY_ATTEMPT_REJECTED_REMOVED,
+    CANOPY_ATTEMPT_UNSURE,
     CanopyAttemptLogRecord,
     canopy_attempt_log_fieldnames,
     canopy_attempt_log_row,
@@ -101,6 +104,54 @@ def log_removed_canopy_attempt(layer, feature, note=None):
     )
 
 
+def log_reviewed_canopy_attempt(layer, feature, status, note=None):
+    """Log an accepted, rejected, or unsure review lifecycle event."""
+    event_by_status = {
+        "accepted": CANOPY_ATTEMPT_ACCEPTED,
+        "rejected": CANOPY_ATTEMPT_REJECTED,
+        "unsure": CANOPY_ATTEMPT_UNSURE,
+    }
+    event = event_by_status.get(str(status or "").strip().lower())
+    if event is None:
+        return CanopyAttemptLogResult(
+            False,
+            None,
+            ("Canopy review event must be accepted, rejected, or unsure.",),
+            (),
+        )
+
+    fields = layer.fields()
+
+    def attr(field_name):
+        index = fields.indexOf(field_name)
+        return feature[index] if index != -1 else None
+
+    return append_canopy_attempt_log(
+        CanopyAttemptLogRecord(
+            attempt_id=attr("attempt_id") or new_canopy_attempt_id(),
+            timestamp_utc=_utc_now(),
+            event=event,
+            project_id=_project_id(),
+            project_file=_project_file(),
+            layer_id=layer.id() if layer is not None else "",
+            layer_name=layer.name(),
+            canopy_fid=attr("fid"),
+            qgis_feature_id=feature.id(),
+            canopy_mode=attr("mode"),
+            crown_tightness=attr("tightness"),
+            seed_radius_m=attr("radius_m"),
+            area_m2=attr("area_m2"),
+            apex_height_m=attr("apex_h"),
+            refined=attr("refined"),
+            chm_id=attr("chm_id"),
+            ortho_id=attr("ortho_id"),
+            species=attr("species"),
+            review_status=event,
+            note=note,
+        )
+    )
+
+
 def log_removed_canopy_attempt_from_record(record, note=None):
     """Log a rejected/removal event from a cached created-attempt record."""
     return append_canopy_attempt_log(
@@ -130,7 +181,7 @@ def log_removed_canopy_attempt_from_record(record, note=None):
 
 
 def append_canopy_attempt_log(record):
-    event_store_path = _feedback_event_store_path()
+    event_store_path = feedback_event_store_path()
     event_store_result = append_feedback_event(event_store_path, record)
     if not event_store_result.ok:
         return CanopyAttemptLogResult(
@@ -171,7 +222,7 @@ def _attempt_log_path():
     return _project_feedback_directory() / "forest_labeler_canopy_attempts.csv"
 
 
-def _feedback_event_store_path():
+def feedback_event_store_path():
     return _project_feedback_directory() / "forest_labeler_feedback.sqlite3"
 
 

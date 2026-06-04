@@ -100,6 +100,15 @@ Higher-trust evidence only overrides the universal baseline after minimum sample
 and compatibility checks pass. Compatibility includes workflow, algorithm
 version, ecosystem context, and CHM resolution where known.
 
+The first production recommendation path uses durable project review events:
+
+- Accept, Reject, Unsure, and Reject + Remove create lifecycle events.
+- Project evidence is summarized by canopy mode and tightness.
+- A project setting overrides the universal baseline after at least three
+  reviewed attempts support that setting.
+- The user sees the evidence scope, acceptance rate, and reviewed sample count
+  before applying the recommendation.
+
 Universal and team contributions must be explicit opt-in. Forest Labeler must
 not silently upload project data, raw geometry, or personal paths. Shared
 learning should prefer approved summaries over raw project records.

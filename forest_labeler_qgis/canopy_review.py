@@ -6,7 +6,12 @@ from dataclasses import dataclass
 
 from qgis.core import QgsFeatureRequest
 
-from .canopy_attempt_log import log_removed_canopy_attempt
+from .canopy_attempt_log import (
+    feedback_event_store_path,
+    log_removed_canopy_attempt,
+    log_reviewed_canopy_attempt,
+)
+from ..forest_labeler_core.canopy_recommendations import recommend_canopy_setting
 from ..forest_labeler_core.canopy_review import (
     CANOPY_REVIEW_FILTER_ATTENTION,
     CANOPY_REVIEW_FILTER_UNREVIEWED,
@@ -89,6 +94,17 @@ def mark_selected_canopies(layer, status, note=None):
         if cleaned_note and note_index != -1:
             if not layer.changeAttributeValue(feature_id, note_index, cleaned_note):
                 warnings.append(f"Could not update review note for feature {feature_id}.")
+        feature = next(
+            layer.getFeatures(QgsFeatureRequest().setFilterFid(feature_id)),
+            None,
+        )
+        if feature is None:
+            warnings.append(f"Review status changed, but feature {feature_id} could not be logged.")
+        else:
+            log_result = log_reviewed_canopy_attempt(layer, feature, status, note=cleaned_note)
+            if not log_result.ok:
+                warnings.extend(log_result.errors)
+            warnings.extend(log_result.warnings)
         updated_count += 1
 
     layer.triggerRepaint()
@@ -211,6 +227,11 @@ def best_canopy_layer_recommendation(layer, min_reviewed=3):
     if layer is None:
         raise ValueError("Select a target canopy polygon layer.")
     return best_canopy_tool_recommendation(_canopy_review_records(layer), min_reviewed=min_reviewed)
+
+
+def best_canopy_event_recommendation(min_reviewed=3):
+    """Recommend from durable project events with a universal fallback."""
+    return recommend_canopy_setting(feedback_event_store_path(), min_reviewed=min_reviewed)
 
 
 def select_canopies_by_review_filter(layer, review_filter):

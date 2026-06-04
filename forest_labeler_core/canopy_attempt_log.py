@@ -8,6 +8,9 @@ from uuid import uuid4
 
 CANOPY_ATTEMPT_CREATED = "created"
 CANOPY_ATTEMPT_REJECTED_REMOVED = "rejected_removed"
+CANOPY_ATTEMPT_ACCEPTED = "accepted"
+CANOPY_ATTEMPT_REJECTED = "rejected"
+CANOPY_ATTEMPT_UNSURE = "unsure"
 
 
 @dataclass(frozen=True)
