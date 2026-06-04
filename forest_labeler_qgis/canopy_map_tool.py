@@ -13,7 +13,7 @@ from qgis.gui import QgsMapTool, QgsRubberBand
 from ..forest_labeler_core.canopy_presets import build_canopy_parameters
 from ..forest_labeler_core.raster_sources import is_probable_ortho_source
 from .canopy_service import CanopyCreationRequest, create_canopy_feature
-from .canopy_review import reject_and_remove_selected_canopies
+from .canopy_review import reject_and_remove_recent_canopy, reject_and_remove_selected_canopies
 from .crown_preview_service import (
     CrownPreviewRequest,
     build_crown_preview_geometry,
@@ -47,6 +47,8 @@ class CanopyLabelMapTool(QgsMapTool):
         self.current_build_result = None
         self.preview_is_refined = False
         self.quick_reject_filter_active = False
+        self.last_created_feature_id = None
+        self.last_created_attempt_id = None
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.grow_circle)
@@ -150,6 +152,7 @@ class CanopyLabelMapTool(QgsMapTool):
         )
 
         if creation.ok:
+            self._remember_created_canopy(creation)
             self.canvas.refresh()
             self.iface.messageBar().pushSuccess(
                 "Forest Labeler",
@@ -258,14 +261,24 @@ class CanopyLabelMapTool(QgsMapTool):
 
     def _quick_reject_selected_canopies(self):
         target_layer = self.settings.target_layer
-        if target_layer is None or not target_layer.selectedFeatureIds():
+        if target_layer is None:
             return False
 
-        result = reject_and_remove_selected_canopies(
-            target_layer,
-            note="Ctrl+Z quick reject",
-        )
+        if target_layer.selectedFeatureIds():
+            result = reject_and_remove_selected_canopies(
+                target_layer,
+                note="Ctrl+Z quick reject",
+            )
+        else:
+            result = reject_and_remove_recent_canopy(
+                target_layer,
+                feature_id=self.last_created_feature_id,
+                attempt_id=self.last_created_attempt_id,
+                note="Ctrl+Z quick reject",
+            )
         if result.ok:
+            self.last_created_feature_id = None
+            self.last_created_attempt_id = None
             self.canvas.refresh()
             self.iface.messageBar().pushSuccess(
                 "Forest Labeler",
@@ -280,6 +293,13 @@ class CanopyLabelMapTool(QgsMapTool):
             " ".join(result.errors + result.warnings),
         )
         return True
+
+    def _remember_created_canopy(self, creation):
+        self.last_created_feature_id = creation.feature_id
+        self.last_created_attempt_id = None
+        if creation.write_result is None or creation.write_result.attribute_plan is None:
+            return
+        self.last_created_attempt_id = creation.write_result.attribute_plan.values.get("attempt_id")
 
     def _enable_quick_reject_shortcut(self):
         if self.quick_reject_filter_active:
