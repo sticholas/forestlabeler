@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from qgis.PyQt.QtCore import QTimer, Qt
-from qgis.PyQt.QtGui import QColor, QKeySequence
-from qgis.PyQt.QtWidgets import QMessageBox, QShortcut
+from qgis.PyQt.QtCore import QCoreApplication, QEvent, QTimer, Qt
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.core import QgsCoordinateTransform, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsWkbTypes
 from qgis.gui import QgsMapTool, QgsRubberBand
 
@@ -46,7 +46,7 @@ class CanopyLabelMapTool(QgsMapTool):
         self.current_geometry = None
         self.current_build_result = None
         self.preview_is_refined = False
-        self.quick_reject_shortcut = None
+        self.quick_reject_filter_active = False
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.grow_circle)
@@ -282,23 +282,30 @@ class CanopyLabelMapTool(QgsMapTool):
         return True
 
     def _enable_quick_reject_shortcut(self):
-        if self.quick_reject_shortcut is None:
-            undo_sequence = getattr(QKeySequence, "Undo", None)
-            if undo_sequence is None:
-                undo_sequence = QKeySequence.StandardKey.Undo
-            self.quick_reject_shortcut = QShortcut(QKeySequence(undo_sequence), self.canvas)
-            self.quick_reject_shortcut.setContext(Qt.ShortcutContext.ApplicationShortcut)
-            self.quick_reject_shortcut.activated.connect(self._handle_quick_reject_shortcut)
-        self.quick_reject_shortcut.setEnabled(True)
+        if self.quick_reject_filter_active:
+            return
+        application = QCoreApplication.instance()
+        if application is not None:
+            application.installEventFilter(self)
+            self.quick_reject_filter_active = True
 
     def _disable_quick_reject_shortcut(self):
-        if self.quick_reject_shortcut is not None:
-            self.quick_reject_shortcut.setEnabled(False)
-
-    def _handle_quick_reject_shortcut(self):
-        if self._quick_reject_selected_canopies():
+        if not self.quick_reject_filter_active:
             return
-        self._trigger_qgis_undo_fallback()
+        application = QCoreApplication.instance()
+        if application is not None:
+            application.removeEventFilter(self)
+        self.quick_reject_filter_active = False
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.KeyPress and self._is_quick_reject_shortcut(event):
+            if self._quick_reject_selected_canopies():
+                event.accept()
+                return True
+            self._trigger_qgis_undo_fallback()
+            event.accept()
+            return True
+        return super().eventFilter(watched, event)
 
     def _trigger_qgis_undo_fallback(self):
         try:
