@@ -118,6 +118,37 @@ class FeedbackEventStoreTest(unittest.TestCase):
         self.assertEqual(evidence[0].reviewed_total, 1)
         self.assertEqual(evidence[0].accepted_rate, 0.0)
 
+    def test_qvariant_like_values_are_normalized_before_sqlite_write(self):
+        wrapped_record = replace(
+            self.created_record,
+            species=FakeQVariant("Unprocessed"),
+            chm_id=FakeQVariant(None),
+            crown_tightness=FakeQVariant(17),
+        )
+
+        result = append_feedback_event(self.database_path, wrapped_record)
+
+        self.assertTrue(result.ok)
+        with sqlite3.connect(self.database_path) as connection:
+            row = connection.execute(
+                "SELECT species, chm_id, crown_tightness FROM attempts"
+            ).fetchone()
+        self.assertEqual(row, ("Unprocessed", None, 17))
+
+
+class FakeQVariant:
+    def __init__(self, value):
+        self._value = value
+
+    def isNull(self):
+        return self._value is None
+
+    def isValid(self):
+        return True
+
+    def value(self):
+        return self._value
+
 
 if __name__ == "__main__":
     unittest.main()

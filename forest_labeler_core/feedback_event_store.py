@@ -199,7 +199,7 @@ def _upsert_attempt(connection, record):
             ortho_id = COALESCE(excluded.ortho_id, attempts.ortho_id),
             species = COALESCE(excluded.species, attempts.species)
         """,
-        (
+        _sqlite_values(
             record.attempt_id,
             record.project_id,
             record.project_file,
@@ -228,7 +228,7 @@ def _insert_event(connection, record):
             event_id, attempt_id, timestamp_utc, event_type, review_status, note
         ) VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (
+        _sqlite_values(
             feedback_event_id(record),
             record.attempt_id,
             record.timestamp_utc,
@@ -238,6 +238,38 @@ def _insert_event(connection, record):
         ),
     )
     return cursor.rowcount > 0
+
+
+def _sqlite_values(*values):
+    return tuple(_sqlite_value(value) for value in values)
+
+
+def _sqlite_value(value):
+    """Convert QGIS/PyQt wrapper values into SQLite-supported native values."""
+    if value is None or isinstance(value, (str, int, float, bytes)):
+        return value
+
+    try:
+        if hasattr(value, "isNull") and value.isNull():
+            return None
+    except Exception:
+        pass
+
+    try:
+        if hasattr(value, "isValid") and not value.isValid():
+            return None
+    except Exception:
+        pass
+
+    try:
+        if hasattr(value, "value"):
+            unwrapped = value.value()
+            if unwrapped is not value:
+                return _sqlite_value(unwrapped)
+    except Exception:
+        pass
+
+    return str(value)
 
 
 def _int_or_zero(value):
