@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from qgis.core import QgsFeatureRequest
+
 from .canopy_attempt_log import log_removed_canopy_attempt
 from ..forest_labeler_core.canopy_review import (
     CANOPY_REVIEW_FILTER_ATTENTION,
@@ -100,6 +102,23 @@ def mark_selected_canopies(layer, status, note=None):
 
 def reject_and_remove_selected_canopies(layer, note=None):
     """Log selected canopies as rejected, then remove them from the target layer."""
+    if layer is None:
+        return CanopyReviewUpdateResult(False, 0, ("Select a target canopy polygon layer.",), ())
+
+    selected_ids = layer.selectedFeatureIds()
+    if not selected_ids:
+        return CanopyReviewUpdateResult(
+            False,
+            0,
+            ("Select one or more canopy features to reject and remove.",),
+            (),
+        )
+
+    return reject_and_remove_canopies_by_ids(layer, selected_ids, note=note)
+
+
+def reject_and_remove_canopies_by_ids(layer, feature_ids, note=None):
+    """Log canopies by feature id as rejected, then remove them from the target layer."""
     errors = []
     warnings = []
 
@@ -110,8 +129,8 @@ def reject_and_remove_selected_canopies(layer, note=None):
     if errors:
         return CanopyReviewUpdateResult(False, 0, tuple(errors), tuple(warnings))
 
-    selected_ids = layer.selectedFeatureIds()
-    if not selected_ids:
+    feature_ids = tuple(feature_ids or ())
+    if not feature_ids:
         return CanopyReviewUpdateResult(
             False,
             0,
@@ -119,12 +138,15 @@ def reject_and_remove_selected_canopies(layer, note=None):
             tuple(warnings),
         )
 
-    feature_by_id = {feature.id(): feature for feature in layer.getFeatures(selected_ids)}
+    feature_by_id = {
+        feature.id(): feature
+        for feature in layer.getFeatures(QgsFeatureRequest().setFilterFids(feature_ids))
+    }
     removed_count = 0
     command = _LayerEditCommand(layer, "Reject and remove Forest Labeler canopy")
     command.begin()
     try:
-        for feature_id in selected_ids:
+        for feature_id in feature_ids:
             feature = feature_by_id.get(feature_id)
             if feature is None:
                 warnings.append(f"Could not read selected canopy feature {feature_id}.")
@@ -132,6 +154,8 @@ def reject_and_remove_selected_canopies(layer, note=None):
             log_result = log_removed_canopy_attempt(layer, feature, note=note)
             if not log_result.ok:
                 warnings.extend(log_result.errors)
+                warnings.append(f"Canopy feature {feature_id} was kept because the rejected attempt was not logged.")
+                continue
             if not layer.deleteFeature(feature_id):
                 warnings.append(f"Could not remove canopy feature {feature_id}.")
                 continue
@@ -153,6 +177,22 @@ def reject_and_remove_selected_canopies(layer, note=None):
         errors=() if removed_count > 0 else ("No selected canopies were removed.",),
         warnings=tuple(warnings),
     )
+
+
+def reject_and_remove_recent_canopy(layer, feature_id=None, attempt_id=None, note=None):
+    """Reject/remove the most recent canopy even when QGIS selection is empty."""
+    if layer is None:
+        return CanopyReviewUpdateResult(False, 0, ("Select a target canopy polygon layer.",), ())
+
+    feature = _find_feature(layer, feature_id=feature_id, attempt_id=attempt_id)
+    if feature is None:
+        return CanopyReviewUpdateResult(
+            False,
+            0,
+            ("Could not find the last Forest Labeler canopy attempt to reject and remove.",),
+            (),
+        )
+    return reject_and_remove_canopies_by_ids(layer, (feature.id(),), note=note)
 
 
 def summarize_canopy_layer_reviews(layer):
@@ -218,6 +258,22 @@ def _canopy_review_records(layer):
             }
         )
     return records
+
+
+def _find_feature(layer, feature_id=None, attempt_id=None):
+    if feature_id is not None:
+        for feature in layer.getFeatures(QgsFeatureRequest().setFilterFid(feature_id)):
+            return feature
+
+    if not attempt_id:
+        return None
+    attempt_index = layer.fields().indexOf("attempt_id")
+    if attempt_index == -1:
+        return None
+    for feature in layer.getFeatures():
+        if str(feature[attempt_index]) == str(attempt_id):
+            return feature
+    return None
 
 
 class _LayerEditCommand:
