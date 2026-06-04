@@ -142,3 +142,9 @@ Material geometry or provenance edits invalidate an earlier review and create
 an `edited` lifecycle event. The crown returns to `unreviewed` until a person
 reviews the changed result again. Non-material labeling metadata, such as
 species and review notes, does not invalidate crown-shape evidence.
+
+Geometry edits also refresh geometry-derived attributes before the lifecycle
+event is persisted. `area_m2`, `radius_m`, and `diam_m` are recalculated from
+the edited polygon so the layer attributes and event-store context do not drift
+apart. Raster-derived metrics, including `apex_h`, require an explicit CHM-aware
+recalculation workflow rather than an automatic geometry-only update.

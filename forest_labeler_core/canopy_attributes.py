@@ -7,6 +7,7 @@ touch project data.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 
@@ -92,6 +93,22 @@ def build_canopy_attribute_plan(inputs: CanopyAttributeInputs, available_fields)
     }
     skipped = tuple(field_name for field_name in desired if field_name not in available)
     return AttributePlan(values=values, skipped_fields=skipped)
+
+
+def canopy_geometry_metric_updates(area_m2):
+    """Return geometry-derived canopy metrics for a revised crown shape."""
+    try:
+        area = float(area_m2)
+    except (TypeError, ValueError):
+        return {}
+    if area <= 0:
+        return {}
+    radius = math.sqrt(area / math.pi)
+    return {
+        "area_m2": round(area, 2),
+        "radius_m": round(radius, 2),
+        "diam_m": round(radius * 2.0, 2),
+    }
 
 
 def next_numeric_fid(existing_values):

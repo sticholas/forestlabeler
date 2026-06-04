@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from qgis.core import QgsFeatureRequest
 
+from ..forest_labeler_core.canopy_attributes import canopy_geometry_metric_updates
 from .canopy_attempt_log import (
     canopy_attempt_record_from_feature,
     feedback_event_store_path,
@@ -140,8 +141,9 @@ class CanopyLifecycleMonitor:
                 "Observed review reset and updated learning evidence.",
             )
 
-    def _geometry_changed(self, feature_id, _geometry):
+    def _geometry_changed(self, feature_id, geometry):
         previous = self.records_by_feature_id.get(feature_id)
+        self._update_geometry_metrics(feature_id, geometry)
         self._refresh_feature(feature_id)
         current = self.records_by_feature_id.get(feature_id)
         if previous is None or current is None:
@@ -152,6 +154,19 @@ class CanopyLifecycleMonitor:
                 current,
                 note="Canopy geometry edited in QGIS",
             )
+
+    def _update_geometry_metrics(self, feature_id, geometry):
+        updates = canopy_geometry_metric_updates(geometry.area())
+        if not updates:
+            return
+        self.invalidating_feature_ids.add(feature_id)
+        try:
+            for field_name, value in updates.items():
+                index = self.layer.fields().indexOf(field_name)
+                if index != -1:
+                    self.layer.changeAttributeValue(feature_id, index, value)
+        finally:
+            self.invalidating_feature_ids.discard(feature_id)
 
     def _invalidate_review(self, feature_id, record, note):
         self._report(

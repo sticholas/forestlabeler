@@ -3,6 +3,7 @@ import unittest
 from forest_labeler_core.canopy_attributes import (
     CanopyAttributeInputs,
     build_canopy_attribute_plan,
+    canopy_geometry_metric_updates,
     next_numeric_fid,
 )
 
@@ -79,6 +80,17 @@ class CanopyAttributeTest(unittest.TestCase):
     def test_next_numeric_fid_ignores_blank_and_invalid_values(self):
         self.assertEqual(next_numeric_fid([None, "", "abc", 1, "4", 3]), 5)
         self.assertEqual(next_numeric_fid([]), 1)
+
+    def test_canopy_geometry_metric_updates_derive_equivalent_radius(self):
+        metrics = canopy_geometry_metric_updates(78.5398163397)
+
+        self.assertEqual(metrics["area_m2"], 78.54)
+        self.assertEqual(metrics["radius_m"], 5.0)
+        self.assertEqual(metrics["diam_m"], 10.0)
+
+    def test_canopy_geometry_metric_updates_ignore_invalid_area(self):
+        self.assertEqual(canopy_geometry_metric_updates(0), {})
+        self.assertEqual(canopy_geometry_metric_updates(None), {})
 
 
 if __name__ == "__main__":

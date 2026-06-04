@@ -101,6 +101,17 @@ returns it to `unreviewed`. This prevents an earlier acceptance from supporting
 a crown that has materially changed. Species and review-note edits do not
 invalidate crown-shape review.
 
+When canopy geometry changes, Forest Labeler updates geometry-derived fields
+when they exist on the layer:
+
+- `area_m2`
+- `radius_m`
+- `diam_m`
+
+The updated radius is an equivalent-circle radius derived from the revised
+polygon area. Raster-derived fields such as `apex_h` stay unchanged after a
+manual geometry edit until a future CHM recalculation workflow is run.
+
 ## Create Training Polygon
 
 Use **Training Polygon** to create configurable training areas.
