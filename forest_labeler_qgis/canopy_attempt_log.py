@@ -13,6 +13,7 @@ from qgis.core import QgsExpressionContextUtils, QgsProject
 from ..forest_labeler_core.canopy_attempt_log import (
     CANOPY_ATTEMPT_ACCEPTED,
     CANOPY_ATTEMPT_CREATED,
+    CANOPY_ATTEMPT_EDITED,
     CANOPY_ATTEMPT_REJECTED,
     CANOPY_ATTEMPT_REJECTED_REMOVED,
     CANOPY_ATTEMPT_RESTORED,
@@ -202,6 +203,19 @@ def log_restored_canopy_attempt_from_record(record, note=None):
             record,
             timestamp_utc=_utc_now(),
             event=event,
+            note=note,
+        )
+    )
+
+
+def log_edited_canopy_attempt_from_record(record, note=None):
+    """Record a material edit that makes an earlier review stale."""
+    return append_canopy_attempt_log(
+        replace(
+            record,
+            timestamp_utc=_utc_now(),
+            event=CANOPY_ATTEMPT_EDITED,
+            review_status="unreviewed",
             note=note,
         )
     )

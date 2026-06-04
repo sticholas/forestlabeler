@@ -137,3 +137,8 @@ buttons, Ctrl+Z quick reject, toolbar or attribute-table deletion, bulk
 deletion, direct review-status edits, and deletion undo/restoration all update
 the same attempt lifecycle. Recommendation evidence always uses the latest
 meaningful state for each stable `attempt_id`.
+
+Material geometry or provenance edits invalidate an earlier review and create
+an `edited` lifecycle event. The crown returns to `unreviewed` until a person
+reviews the changed result again. Non-material labeling metadata, such as
+species and review notes, does not invalidate crown-shape evidence.

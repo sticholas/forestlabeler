@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .canopy_attempt_log import (
     CANOPY_ATTEMPT_ACCEPTED,
+    CANOPY_ATTEMPT_EDITED,
     CANOPY_ATTEMPT_REJECTED,
     CANOPY_ATTEMPT_REJECTED_REMOVED,
     CANOPY_ATTEMPT_RESTORED,
@@ -78,11 +79,12 @@ def recommendation_evidence_from_event_store(path, scope, context, source_label=
                 events.event_type
             FROM attempts
             JOIN events ON events.attempt_id = attempts.attempt_id
-            WHERE events.event_type IN (?, ?, ?, ?, ?)
+            WHERE events.event_type IN (?, ?, ?, ?, ?, ?)
             ORDER BY events.timestamp_utc, events.rowid
             """,
             (
                 CANOPY_ATTEMPT_ACCEPTED,
+                CANOPY_ATTEMPT_EDITED,
                 CANOPY_ATTEMPT_REJECTED,
                 CANOPY_ATTEMPT_UNSURE,
                 CANOPY_ATTEMPT_REJECTED_REMOVED,
@@ -96,7 +98,7 @@ def recommendation_evidence_from_event_store(path, scope, context, source_label=
 
     grouped = {}
     for canopy_mode, crown_tightness, event_type in latest_by_attempt.values():
-        if event_type == CANOPY_ATTEMPT_RESTORED:
+        if event_type in {CANOPY_ATTEMPT_EDITED, CANOPY_ATTEMPT_RESTORED}:
             continue
         key = (str(canopy_mode or ""), _int_or_zero(crown_tightness))
         bucket = grouped.setdefault(key, {"reviewed": 0, "accepted": 0, "rejected": 0})

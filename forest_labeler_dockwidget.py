@@ -68,7 +68,7 @@ from .forest_labeler_qgis.canopy_review import (
     select_canopies_by_review_filter,
     summarize_canopy_layer_reviews,
 )
-from .forest_labeler_qgis.canopy_deletion_monitor import CanopyDeletionMonitor
+from .forest_labeler_qgis.canopy_lifecycle_monitor import CanopyLifecycleMonitor
 from .forest_labeler_qgis.canopy_schema import missing_canopy_schema_fields, repair_canopy_schema
 from .forest_labeler_qgis.training_polygon_schema import (
     missing_training_polygon_schema_fields,
@@ -105,7 +105,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
-        self.canopyDeletionMonitor = CanopyDeletionMonitor(iface=self.iface)
+        self.canopyLifecycleMonitor = CanopyLifecycleMonitor(iface=self.iface)
         self._apply_product_styling()
         self._populate_canopy_modes()
         self._populate_training_polygon_presets()
@@ -199,7 +199,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def _watch_canopy_target_layer(self, *_args):
         """Observe every deletion path on the selected canopy target layer."""
-        self.canopyDeletionMonitor.watch(self._current_layer(self.targetLayerComboBox))
+        self.canopyLifecycleMonitor.watch(self._current_layer(self.targetLayerComboBox))
 
     def validate_project(self):
         """Validate selected layers and report whether labeling can start."""

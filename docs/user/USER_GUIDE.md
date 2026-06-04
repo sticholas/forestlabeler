@@ -96,6 +96,11 @@ recorded too. Undoing a deletion restores the crown's latest review state, so
 recommendations follow the current project state while the complete history
 remains available for audit and future learning.
 
+If a reviewed crown's geometry or generation metadata is edited, Forest Labeler
+returns it to `unreviewed`. This prevents an earlier acceptance from supporting
+a crown that has materially changed. Species and review-note edits do not
+invalidate crown-shape review.
+
 ## Create Training Polygon
 
 Use **Training Polygon** to create configurable training areas.

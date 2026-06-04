@@ -6,6 +6,7 @@ from pathlib import Path
 
 from forest_labeler_core.canopy_attempt_log import (
     CANOPY_ATTEMPT_CREATED,
+    CANOPY_ATTEMPT_EDITED,
     CANOPY_ATTEMPT_REJECTED_REMOVED,
     CANOPY_ATTEMPT_RESTORED,
     CanopyAttemptLogRecord,
@@ -202,6 +203,30 @@ class FeedbackEventStoreTest(unittest.TestCase):
             timestamp_utc="2026-06-04T00:02:00+00:00",
         )
         for record in (self.created_record, removed, restored):
+            append_feedback_event(self.database_path, record)
+
+        evidence = recommendation_evidence_from_event_store(
+            self.database_path,
+            scope=SCOPE_PROJECT,
+            context=LearningContext("label_canopy", "canopy-v1"),
+        )
+
+        self.assertEqual(evidence, ())
+
+    def test_material_edit_invalidates_previous_acceptance(self):
+        accepted = replace(
+            self.created_record,
+            event="accepted",
+            review_status="accepted",
+            timestamp_utc="2026-06-04T00:01:00+00:00",
+        )
+        edited = replace(
+            self.created_record,
+            event=CANOPY_ATTEMPT_EDITED,
+            review_status="unreviewed",
+            timestamp_utc="2026-06-04T00:02:00+00:00",
+        )
+        for record in (self.created_record, accepted, edited):
             append_feedback_event(self.database_path, record)
 
         evidence = recommendation_evidence_from_event_store(
