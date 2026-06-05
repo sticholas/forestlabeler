@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from qgis.PyQt.QtCore import QTimer
 from qgis.core import QgsFeatureRequest
 
 from ..forest_labeler_core.canopy_attributes import canopy_geometry_metric_updates
@@ -31,6 +32,8 @@ class CanopyLifecycleMonitor:
         self.records_by_feature_id = {}
         self.invalidating_feature_ids = set()
         self.chm_layer = None
+        self.pending_chm_feature_ids = set()
+        self.chm_update_scheduled = False
 
     def watch(self, layer, chm_layer=None):
         self.chm_layer = chm_layer
@@ -73,6 +76,8 @@ class CanopyLifecycleMonitor:
         self.chm_layer = None
         self.records_by_feature_id = {}
         self.invalidating_feature_ids = set()
+        self.pending_chm_feature_ids = set()
+        self.chm_update_scheduled = False
 
     def _feature_added(self, feature_id):
         feature = self._feature(feature_id)
@@ -155,7 +160,7 @@ class CanopyLifecycleMonitor:
         except Exception:
             current_geometry = feature.geometry() if feature is not None else geometry
         self._update_geometry_metrics(feature_id, current_geometry)
-        self._update_chm_metrics(feature_id, current_geometry)
+        self._schedule_chm_metrics_update(feature_id)
         self._refresh_feature(feature_id)
         current = self.records_by_feature_id.get(feature_id)
         if previous is None or current is None:
@@ -167,7 +172,23 @@ class CanopyLifecycleMonitor:
                 note="Canopy geometry edited in QGIS",
             )
 
-    def _update_chm_metrics(self, feature_id, geometry):
+    def _schedule_chm_metrics_update(self, feature_id):
+        if self.chm_layer is None:
+            return
+        self.pending_chm_feature_ids.add(feature_id)
+        if self.chm_update_scheduled:
+            return
+        self.chm_update_scheduled = True
+        QTimer.singleShot(0, self._flush_chm_metrics_updates)
+
+    def _flush_chm_metrics_updates(self):
+        self.chm_update_scheduled = False
+        feature_ids = tuple(self.pending_chm_feature_ids)
+        self.pending_chm_feature_ids = set()
+        for feature_id in feature_ids:
+            self._update_chm_metrics(feature_id)
+
+    def _update_chm_metrics(self, feature_id):
         if self.chm_layer is None:
             return
         self.invalidating_feature_ids.add(feature_id)
@@ -176,10 +197,10 @@ class CanopyLifecycleMonitor:
                 self.layer,
                 self.chm_layer,
                 feature_id,
-                geometry=geometry,
             )
         finally:
             self.invalidating_feature_ids.discard(feature_id)
+        self._refresh_feature(feature_id)
         if not result.ok:
             self._report(result, "Canopy CHM metrics recalculated.")
 
