@@ -28,7 +28,6 @@ class CanopyAttributeTest(unittest.TestCase):
                 ortho_id="X:/imagery/ortho.tif",
             ),
             available_fields={
-                "fid",
                 "attempt_id",
                 "radius_m",
                 "diam_m",
@@ -46,7 +45,7 @@ class CanopyAttributeTest(unittest.TestCase):
             },
         )
 
-        self.assertEqual(plan.values["fid"], 7)
+        self.assertNotIn("fid", plan.values)
         self.assertEqual(plan.values["attempt_id"], "canopy-abc123")
         self.assertEqual(plan.values["radius_m"], 3.46)
         self.assertEqual(plan.values["diam_m"], 6.91)
@@ -76,7 +75,7 @@ class CanopyAttributeTest(unittest.TestCase):
 
         self.assertEqual(plan.values, {"mode": "DENSE", "species": None})
         self.assertIn("radius_m", plan.skipped_fields)
-        self.assertIn("fid", plan.skipped_fields)
+        self.assertNotIn("fid", plan.skipped_fields)
 
     def test_next_numeric_fid_ignores_blank_and_invalid_values(self):
         self.assertEqual(next_numeric_fid([None, "", "abc", 1, "4", 3]), 5)

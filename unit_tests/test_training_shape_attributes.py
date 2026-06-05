@@ -17,7 +17,7 @@ class TrainingShapeAttributeTest(unittest.TestCase):
         field_types = {
             field_spec.name: field_spec.value_type for field_spec in TRAINING_POLYGON_FIELD_SPECS
         }
-        self.assertEqual(field_types["fid"], "int")
+        self.assertNotIn("fid", field_types)
         self.assertEqual(field_types["area_m2"], "double")
         self.assertEqual(field_types["review_status"], "string")
 
@@ -41,7 +41,6 @@ class TrainingShapeAttributeTest(unittest.TestCase):
                 },
             ),
             available_fields={
-                "fid",
                 "segment_m",
                 "side_m",
                 "side_lengths",
@@ -61,7 +60,7 @@ class TrainingShapeAttributeTest(unittest.TestCase):
             },
         )
 
-        self.assertEqual(plan.values["fid"], 12)
+        self.assertNotIn("fid", plan.values)
         self.assertEqual(plan.values["segment_m"], 25.68)
         self.assertEqual(plan.values["side_m"], 25.68)
         self.assertEqual(plan.values["side_lengths"], "25.678, 25.678, 25.678, 25.678, 25.678, 25.678")
@@ -95,7 +94,7 @@ class TrainingShapeAttributeTest(unittest.TestCase):
 
         self.assertEqual(plan.values, {"shape": "square"})
         self.assertIn("segment_m", plan.skipped_fields)
-        self.assertIn("fid", plan.skipped_fields)
+        self.assertNotIn("fid", plan.skipped_fields)
 
 
 if __name__ == "__main__":
