@@ -160,7 +160,7 @@ def reject_and_remove_canopies_by_ids(layer, feature_ids, note=None):
 
     feature_by_id = {
         feature.id(): feature
-        for feature in layer.getFeatures(QgsFeatureRequest().setFilterFids(feature_ids))
+        for feature in layer.getFeatures(QgsFeatureRequest().setFilterFids(list(feature_ids)))
     }
     removed_count = 0
     command = _LayerEditCommand(layer, "Reject and remove Forest Labeler canopy")

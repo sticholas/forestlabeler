@@ -46,7 +46,7 @@ def recalculate_selected_canopy_chm_metrics(layer, chm_layer, max_samples=5000):
             (),
         )
 
-    features = layer.getFeatures(QgsFeatureRequest().setFilterFids(selected_ids))
+    features = layer.getFeatures(QgsFeatureRequest().setFilterFids(list(selected_ids)))
     updated_count = 0
     for feature in features:
         geometry = QgsGeometry(feature.geometry())
