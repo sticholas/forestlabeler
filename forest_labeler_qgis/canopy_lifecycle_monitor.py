@@ -51,6 +51,7 @@ class CanopyLifecycleMonitor:
         self._connect(layer.attributeValueChanged, self._attribute_changed)
         self._connect(layer.geometryChanged, self._geometry_changed)
         self._connect(layer.featureDeleted, self._feature_deleted)
+        self._connect_optional(layer, "beforeCommitChanges", self._before_commit_changes)
         self._connect_optional(layer, "editCommandEnded", self._edit_command_ended)
         self._connect_optional(layer, "editCommandDestroyed", self._edit_command_ended)
 
@@ -160,7 +161,7 @@ class CanopyLifecycleMonitor:
             )
 
     def _geometry_changed(self, feature_id, geometry):
-        if self._is_temporary_feature_id(feature_id):
+        if self._is_temporary_feature_id(feature_id) or self._has_uncommitted_added_features():
             return
         previous = self.records_by_feature_id.get(feature_id)
         feature = self._feature(feature_id)
@@ -184,7 +185,11 @@ class CanopyLifecycleMonitor:
             )
 
     def _schedule_chm_metrics_update(self, feature_id, geometry=None):
-        if self.chm_layer is None or self._is_temporary_feature_id(feature_id):
+        if (
+            self.chm_layer is None
+            or self._is_temporary_feature_id(feature_id)
+            or self._has_uncommitted_added_features()
+        ):
             return
         self.pending_chm_feature_ids.add(feature_id)
         if geometry is not None:
@@ -201,8 +206,17 @@ class CanopyLifecycleMonitor:
         if self.pending_chm_feature_ids:
             QTimer.singleShot(0, self._flush_chm_metrics_updates)
 
+    def _before_commit_changes(self, *_args):
+        self.pending_chm_feature_ids = set()
+        self.pending_chm_geometries = {}
+        self.chm_update_scheduled = False
+
     def _flush_chm_metrics_updates(self):
         self.chm_update_scheduled = False
+        if self._has_uncommitted_added_features():
+            self.pending_chm_feature_ids = set()
+            self.pending_chm_geometries = {}
+            return
         feature_ids = tuple(self.pending_chm_feature_ids)
         geometries = self.pending_chm_geometries
         self.pending_chm_feature_ids = set()
@@ -211,7 +225,11 @@ class CanopyLifecycleMonitor:
             self._update_chm_metrics(feature_id, geometry=geometries.get(feature_id))
 
     def _update_chm_metrics(self, feature_id, geometry=None):
-        if self.chm_layer is None or self._is_temporary_feature_id(feature_id):
+        if (
+            self.chm_layer is None
+            or self._is_temporary_feature_id(feature_id)
+            or self._has_uncommitted_added_features()
+        ):
             return
         self.invalidating_feature_ids.add(feature_id)
         try:
@@ -228,7 +246,7 @@ class CanopyLifecycleMonitor:
             self._report(result, "Canopy CHM metrics recalculated.")
 
     def _update_geometry_metrics(self, feature_id, geometry):
-        if self._is_temporary_feature_id(feature_id):
+        if self._is_temporary_feature_id(feature_id) or self._has_uncommitted_added_features():
             return
         updates = canopy_geometry_metric_updates(geometry.area())
         if not updates:
@@ -292,6 +310,20 @@ class CanopyLifecycleMonitor:
     def _is_temporary_feature_id(self, feature_id):
         try:
             return int(feature_id) < 0
+        except Exception:
+            return False
+
+    def _has_uncommitted_added_features(self):
+        if self.layer is None:
+            return False
+        try:
+            edit_buffer = self.layer.editBuffer()
+        except Exception:
+            return False
+        if edit_buffer is None:
+            return False
+        try:
+            return bool(edit_buffer.addedFeatures())
         except Exception:
             return False
 

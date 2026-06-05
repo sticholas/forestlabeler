@@ -823,7 +823,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.useBestCanopyToolButton.setVisible(show_review)
         self.inspectCanopyFeedbackButton.setVisible(show_review)
         self.backupCanopyFeedbackButton.setVisible(show_review)
-        self.recalculateCanopyChmMetricsButton.setVisible(False)
+        self.recalculateCanopyChmMetricsButton.setVisible(show_review)
         self.exportCanopyFeedbackCsvButton.setVisible(show_review)
         self.selectUnreviewedCanopiesButton.setVisible(show_review)
         self.selectAttentionCanopiesButton.setVisible(show_review)
