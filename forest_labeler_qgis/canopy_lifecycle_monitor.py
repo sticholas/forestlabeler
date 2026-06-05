@@ -23,6 +23,11 @@ from ..forest_labeler_core.feedback_event_store import latest_feedback_event_typ
 from .canopy_metrics import recalculate_canopy_chm_metrics_by_id
 
 
+# Disabled until QGIS/GeoPackage edit-buffer writes are isolated from background
+# metric and feedback updates. Core labeling must never risk provider save locks.
+AUTO_LIFECYCLE_MONITOR_ENABLED = False
+
+
 class CanopyLifecycleMonitor:
     """Keep review and learning evidence aligned with QGIS feature mutations."""
 
@@ -38,6 +43,9 @@ class CanopyLifecycleMonitor:
         self.connected_signals = []
 
     def watch(self, layer, chm_layer=None):
+        if not AUTO_LIFECYCLE_MONITOR_ENABLED:
+            self.disconnect()
+            return
         self.chm_layer = chm_layer
         if layer is self.layer:
             self.refresh()
