@@ -131,6 +131,8 @@ project-local paths and translate QGIS lifecycle activity into event records.
 Read-only feedback inspection is allowed in the UI; mutation, cleanup, or
 sandbox testing should be implemented as explicit service commands rather than
 manual database edits.
+Health checks are the gate before future agents or automated tuning consume
+feedback evidence.
 
 Learning-scope policy lives in `forest_labeler_core/learning_scopes.py`. It
 defines project, user, team, and universal evidence; compatibility rules;

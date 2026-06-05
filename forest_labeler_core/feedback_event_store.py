@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .canopy_attempt_log import (
     CANOPY_ATTEMPT_ACCEPTED,
+    CANOPY_ATTEMPT_CREATED,
     CANOPY_ATTEMPT_EDITED,
     CANOPY_ATTEMPT_REJECTED,
     CANOPY_ATTEMPT_REJECTED_REMOVED,
@@ -35,6 +36,9 @@ class FeedbackInspectionSummary:
     path: str
     exists: bool
     schema_version: int | None
+    database_size_bytes: int
+    health_status: str
+    health_checks: tuple
     attempt_total: int
     event_total: int
     event_counts: tuple
@@ -229,6 +233,9 @@ def inspect_feedback_event_store(path):
             path=str(database_path),
             exists=False,
             schema_version=None,
+            database_size_bytes=0,
+            health_status="missing",
+            health_checks=("Feedback store has not been created yet.",),
             attempt_total=0,
             event_total=0,
             event_counts=(),
@@ -253,6 +260,33 @@ def inspect_feedback_event_store(path):
                 """
             ).fetchall()
         )
+        orphan_event_total = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM events
+            LEFT JOIN attempts ON attempts.attempt_id = events.attempt_id
+            WHERE attempts.attempt_id IS NULL
+            """
+        ).fetchone()[0]
+        missing_created_total = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM attempts
+            WHERE NOT EXISTS (
+                SELECT 1 FROM events
+                WHERE events.attempt_id = attempts.attempt_id
+                AND events.event_type = ?
+            )
+            """,
+            (CANOPY_ATTEMPT_CREATED,),
+        ).fetchone()[0]
+        incomplete_setting_total = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM attempts
+            WHERE canopy_mode IS NULL OR canopy_mode = '' OR crown_tightness IS NULL
+            """
+        ).fetchone()[0]
         latest_rows = connection.execute(
             """
             SELECT latest.event_type, attempts.canopy_mode, attempts.crown_tightness
@@ -272,15 +306,27 @@ def inspect_feedback_event_store(path):
         ).fetchall()
 
     latest_state_counts = _sorted_counts(row[0] for row in latest_rows)
+    needs_review_total = sum(
+        1 for row in latest_rows if row[0] in {CANOPY_ATTEMPT_EDITED, CANOPY_ATTEMPT_RESTORED}
+    )
     recommended_setting_counts = _sorted_counts(
         f"{row[1] or 'UNKNOWN'} / tightness {row[2] or 0}"
         for row in latest_rows
         if row[0] == CANOPY_ATTEMPT_ACCEPTED
     )
+    health_checks = _feedback_health_checks(
+        orphan_event_total=orphan_event_total,
+        missing_created_total=missing_created_total,
+        incomplete_setting_total=incomplete_setting_total,
+        needs_review_total=needs_review_total,
+    )
     return FeedbackInspectionSummary(
         path=str(database_path),
         exists=True,
         schema_version=int(schema_version),
+        database_size_bytes=database_path.stat().st_size,
+        health_status="ok" if not health_checks else "attention",
+        health_checks=health_checks,
         attempt_total=int(attempt_total),
         event_total=int(event_total),
         event_counts=tuple((str(key), int(count)) for key, count in event_counts),
@@ -461,3 +507,22 @@ def _sorted_counts(values):
         key = str(value or "unknown")
         counts[key] = counts.get(key, 0) + 1
     return tuple(sorted(counts.items()))
+
+
+def _feedback_health_checks(
+    *,
+    orphan_event_total,
+    missing_created_total,
+    incomplete_setting_total,
+    needs_review_total,
+):
+    checks = []
+    if orphan_event_total:
+        checks.append(f"{orphan_event_total} event(s) are not linked to an attempt.")
+    if missing_created_total:
+        checks.append(f"{missing_created_total} attempt(s) are missing a created event.")
+    if incomplete_setting_total:
+        checks.append(f"{incomplete_setting_total} attempt(s) are missing mode or tightness metadata.")
+    if needs_review_total:
+        checks.append(f"{needs_review_total} crown(s) need review after edit or restoration.")
+    return tuple(checks)

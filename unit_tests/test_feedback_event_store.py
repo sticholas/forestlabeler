@@ -128,11 +128,29 @@ class FeedbackEventStoreTest(unittest.TestCase):
         summary = inspect_feedback_event_store(self.database_path)
 
         self.assertTrue(summary.exists)
+        self.assertEqual(summary.health_status, "ok")
+        self.assertEqual(summary.health_checks, ())
         self.assertEqual(summary.attempt_total, 1)
         self.assertEqual(summary.event_total, 2)
         self.assertIn(("accepted", 1), summary.event_counts)
         self.assertIn(("accepted", 1), summary.latest_state_counts)
         self.assertIn(("DENSE / tightness 11", 1), summary.recommended_setting_counts)
+
+    def test_inspection_summary_flags_crowns_needing_review(self):
+        edited = replace(
+            self.created_record,
+            timestamp_utc="2026-06-04T00:01:00+00:00",
+            event=CANOPY_ATTEMPT_EDITED,
+            review_status="unreviewed",
+        )
+        append_feedback_event(self.database_path, self.created_record)
+        append_feedback_event(self.database_path, edited)
+
+        summary = inspect_feedback_event_store(self.database_path)
+
+        self.assertEqual(summary.health_status, "attention")
+        self.assertIn("1 crown(s) need review after edit or restoration.", summary.health_checks)
+        self.assertIn((CANOPY_ATTEMPT_EDITED, 1), summary.latest_state_counts)
 
     def test_event_identity_distinguishes_repeated_lifecycle_transitions(self):
         later_duplicate = replace(self.created_record, timestamp_utc="2026-06-04T00:05:00+00:00")

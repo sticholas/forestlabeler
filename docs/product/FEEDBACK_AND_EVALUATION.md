@@ -45,6 +45,8 @@ Start simple and local:
   readable export, not an automatic sidecar and not the source of truth.
 - Provide a read-only feedback inspector before adding any destructive cleanup
   or sandbox testing controls.
+- Surface database health checks before allowing future cleanup, agent testing,
+  or automated tuning workflows.
 - Summarize feedback by mode and tightness.
 - Use `forest_labeler_core/feedback.py` for QGIS-independent feedback validation and summary rules.
 

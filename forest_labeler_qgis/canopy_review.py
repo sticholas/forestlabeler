@@ -247,9 +247,15 @@ def canopy_feedback_inspection_lines():
     lines = [
         f"Feedback store: {summary.path}",
         f"Schema version: {summary.schema_version}",
+        f"Health: {summary.health_status}",
+        f"Size: {_format_bytes(summary.database_size_bytes)}",
         f"Attempts: {summary.attempt_total}",
         f"Lifecycle events: {summary.event_total}",
     ]
+    if summary.health_checks:
+        lines.append("")
+        lines.append("Health checks:")
+        lines.extend(f"- {message}" for message in summary.health_checks)
     if summary.event_counts:
         lines.append("")
         lines.append("Events:")
@@ -263,6 +269,21 @@ def canopy_feedback_inspection_lines():
         lines.append("Accepted evidence by setting:")
         lines.extend(f"- {setting}: {count}" for setting, count in summary.recommended_setting_counts)
     return tuple(lines)
+
+
+def _format_bytes(size_bytes):
+    try:
+        size = float(size_bytes)
+    except (TypeError, ValueError):
+        return "unknown"
+    units = ("B", "KB", "MB", "GB")
+    unit_index = 0
+    while size >= 1024 and unit_index < len(units) - 1:
+        size = size / 1024.0
+        unit_index += 1
+    if unit_index == 0:
+        return f"{int(size)} {units[unit_index]}"
+    return f"{size:.1f} {units[unit_index]}"
 
 
 def select_canopies_by_review_filter(layer, review_filter):
