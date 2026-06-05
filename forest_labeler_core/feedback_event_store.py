@@ -30,6 +30,18 @@ class FeedbackEventStoreResult:
     errors: tuple
 
 
+@dataclass(frozen=True)
+class FeedbackInspectionSummary:
+    path: str
+    exists: bool
+    schema_version: int | None
+    attempt_total: int
+    event_total: int
+    event_counts: tuple
+    latest_state_counts: tuple
+    recommended_setting_counts: tuple
+
+
 def append_feedback_event(path, record: CanopyAttemptLogRecord):
     """Persist one immutable lifecycle event and its stable attempt context."""
     database_path = Path(path)
@@ -209,6 +221,74 @@ def feedback_event_export_rows(path):
     )
 
 
+def inspect_feedback_event_store(path):
+    """Return a read-only summary of feedback store health and evidence."""
+    database_path = Path(path)
+    if not database_path.exists():
+        return FeedbackInspectionSummary(
+            path=str(database_path),
+            exists=False,
+            schema_version=None,
+            attempt_total=0,
+            event_total=0,
+            event_counts=(),
+            latest_state_counts=(),
+            recommended_setting_counts=(),
+        )
+
+    with sqlite3.connect(str(database_path)) as connection:
+        _initialize_schema(connection)
+        schema_version = connection.execute(
+            "SELECT version FROM schema_version ORDER BY version DESC LIMIT 1"
+        ).fetchone()[0]
+        attempt_total = connection.execute("SELECT COUNT(*) FROM attempts").fetchone()[0]
+        event_total = connection.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+        event_counts = tuple(
+            connection.execute(
+                """
+                SELECT event_type, COUNT(*)
+                FROM events
+                GROUP BY event_type
+                ORDER BY event_type
+                """
+            ).fetchall()
+        )
+        latest_rows = connection.execute(
+            """
+            SELECT latest.event_type, attempts.canopy_mode, attempts.crown_tightness
+            FROM (
+                SELECT events.attempt_id, events.event_type
+                FROM events
+                JOIN (
+                    SELECT attempt_id, MAX(timestamp_utc || printf('%012d', rowid)) AS latest_key
+                    FROM events
+                    GROUP BY attempt_id
+                ) keyed
+                    ON keyed.attempt_id = events.attempt_id
+                    AND keyed.latest_key = events.timestamp_utc || printf('%012d', events.rowid)
+            ) latest
+            JOIN attempts ON attempts.attempt_id = latest.attempt_id
+            """
+        ).fetchall()
+
+    latest_state_counts = _sorted_counts(row[0] for row in latest_rows)
+    recommended_setting_counts = _sorted_counts(
+        f"{row[1] or 'UNKNOWN'} / tightness {row[2] or 0}"
+        for row in latest_rows
+        if row[0] == CANOPY_ATTEMPT_ACCEPTED
+    )
+    return FeedbackInspectionSummary(
+        path=str(database_path),
+        exists=True,
+        schema_version=int(schema_version),
+        attempt_total=int(attempt_total),
+        event_total=int(event_total),
+        event_counts=tuple((str(key), int(count)) for key, count in event_counts),
+        latest_state_counts=latest_state_counts,
+        recommended_setting_counts=recommended_setting_counts,
+    )
+
+
 def _initialize_schema(connection):
     connection.execute("PRAGMA foreign_keys = ON")
     connection.execute(
@@ -373,3 +453,11 @@ def _int_or_zero(value):
         return int(value)
     except (TypeError, ValueError):
         return 0
+
+
+def _sorted_counts(values):
+    counts = {}
+    for value in values:
+        key = str(value or "unknown")
+        counts[key] = counts.get(key, 0) + 1
+    return tuple(sorted(counts.items()))

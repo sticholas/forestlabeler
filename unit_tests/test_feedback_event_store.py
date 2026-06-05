@@ -16,6 +16,7 @@ from forest_labeler_core.feedback_event_store import (
     append_feedback_event,
     feedback_event_export_rows,
     feedback_event_id,
+    inspect_feedback_event_store,
     latest_feedback_event_type,
     recommendation_evidence_from_event_store,
 )
@@ -113,6 +114,25 @@ class FeedbackEventStoreTest(unittest.TestCase):
         self.assertEqual(rows[1]["attempt_id"], "canopy-abc123")
         self.assertEqual(rows[1]["canopy_mode"], "DENSE")
         self.assertEqual(rows[1]["note"], "manual cleanup")
+
+    def test_inspection_summary_reports_events_and_latest_states(self):
+        accepted = replace(
+            self.created_record,
+            timestamp_utc="2026-06-04T00:01:00+00:00",
+            event="accepted",
+            review_status="accepted",
+        )
+        append_feedback_event(self.database_path, self.created_record)
+        append_feedback_event(self.database_path, accepted)
+
+        summary = inspect_feedback_event_store(self.database_path)
+
+        self.assertTrue(summary.exists)
+        self.assertEqual(summary.attempt_total, 1)
+        self.assertEqual(summary.event_total, 2)
+        self.assertIn(("accepted", 1), summary.event_counts)
+        self.assertIn(("accepted", 1), summary.latest_state_counts)
+        self.assertIn(("DENSE / tightness 11", 1), summary.recommended_setting_counts)
 
     def test_event_identity_distinguishes_repeated_lifecycle_transitions(self):
         later_duplicate = replace(self.created_record, timestamp_utc="2026-06-04T00:05:00+00:00")

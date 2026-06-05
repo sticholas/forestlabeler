@@ -62,6 +62,7 @@ from .forest_labeler_qgis.canopy_review import (
     REVIEW_STATUS_REJECTED as CANOPY_REVIEW_REJECTED,
     REVIEW_STATUS_UNSURE as CANOPY_REVIEW_UNSURE,
     best_canopy_event_recommendation,
+    canopy_feedback_inspection_lines,
     canopy_layer_quality_insight_lines,
     mark_selected_canopies,
     reject_and_remove_selected_canopies,
@@ -125,6 +126,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.repairCanopySchemaButton.clicked.connect(self._repair_canopy_schema)
         self.summarizeCanopyReviewsButton.clicked.connect(self._summarize_canopy_reviews)
         self.useBestCanopyToolButton.clicked.connect(self._use_best_canopy_tool)
+        self.inspectCanopyFeedbackButton.clicked.connect(self._inspect_canopy_feedback)
         self.exportCanopyFeedbackCsvButton.clicked.connect(self._export_canopy_feedback_csv)
         self.selectUnreviewedCanopiesButton.clicked.connect(
             lambda: self._select_canopies_by_review_filter(CANOPY_REVIEW_FILTER_UNREVIEWED)
@@ -246,6 +248,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.repairCanopySchemaButton.setProperty("buttonRole", "secondary")
         self.summarizeCanopyReviewsButton.setProperty("buttonRole", "secondary")
         self.useBestCanopyToolButton.setProperty("buttonRole", "secondary")
+        self.inspectCanopyFeedbackButton.setProperty("buttonRole", "secondary")
         self.exportCanopyFeedbackCsvButton.setProperty("buttonRole", "secondary")
         self.selectUnreviewedCanopiesButton.setProperty("buttonRole", "secondary")
         self.selectAttentionCanopiesButton.setProperty("buttonRole", "secondary")
@@ -722,6 +725,13 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.statusTextEdit.setVisible(True)
         self._push_message("Canopy recommendation applied.", Qgis.Success)
 
+    def _inspect_canopy_feedback(self):
+        lines = canopy_feedback_inspection_lines()
+        self.statusSummaryLabel.setText("Canopy feedback store inspected.")
+        self.statusTextEdit.setPlainText("\n".join(lines))
+        self.statusTextEdit.setVisible(True)
+        self._push_message("Canopy feedback store inspected.", Qgis.Info)
+
     def _export_canopy_feedback_csv(self):
         path = canopy_attempt_csv_export_path()
         answer = QtWidgets.QMessageBox.question(
@@ -756,6 +766,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.repairCanopySchemaButton.setVisible(False)
         self.summarizeCanopyReviewsButton.setVisible(show_review)
         self.useBestCanopyToolButton.setVisible(show_review)
+        self.inspectCanopyFeedbackButton.setVisible(show_review)
         self.exportCanopyFeedbackCsvButton.setVisible(show_review)
         self.selectUnreviewedCanopiesButton.setVisible(show_review)
         self.selectAttentionCanopiesButton.setVisible(show_review)

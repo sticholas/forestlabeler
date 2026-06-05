@@ -11,6 +11,7 @@ from .canopy_attempt_log import (
     log_removed_canopy_attempt,
     log_reviewed_canopy_attempt,
 )
+from ..forest_labeler_core.feedback_event_store import inspect_feedback_event_store
 from ..forest_labeler_core.canopy_recommendations import recommend_canopy_setting
 from ..forest_labeler_core.canopy_review import (
     CANOPY_REVIEW_FILTER_ATTENTION,
@@ -232,6 +233,36 @@ def best_canopy_layer_recommendation(layer, min_reviewed=3):
 def best_canopy_event_recommendation(min_reviewed=3):
     """Recommend from durable project events with a universal fallback."""
     return recommend_canopy_setting(feedback_event_store_path(), min_reviewed=min_reviewed)
+
+
+def canopy_feedback_inspection_lines():
+    """Return compact read-only feedback store diagnostics for the UI."""
+    summary = inspect_feedback_event_store(feedback_event_store_path())
+    if not summary.exists:
+        return (
+            "Feedback store has not been created yet.",
+            f"Expected path: {summary.path}",
+        )
+
+    lines = [
+        f"Feedback store: {summary.path}",
+        f"Schema version: {summary.schema_version}",
+        f"Attempts: {summary.attempt_total}",
+        f"Lifecycle events: {summary.event_total}",
+    ]
+    if summary.event_counts:
+        lines.append("")
+        lines.append("Events:")
+        lines.extend(f"- {event}: {count}" for event, count in summary.event_counts)
+    if summary.latest_state_counts:
+        lines.append("")
+        lines.append("Latest crown states:")
+        lines.extend(f"- {state}: {count}" for state, count in summary.latest_state_counts)
+    if summary.recommended_setting_counts:
+        lines.append("")
+        lines.append("Accepted evidence by setting:")
+        lines.extend(f"- {setting}: {count}" for setting, count in summary.recommended_setting_counts)
+    return tuple(lines)
 
 
 def select_canopies_by_review_filter(layer, review_filter):

@@ -128,6 +128,9 @@ explicit readable export generated from SQLite when the user requests it. Pure
 event identity, schema, and persistence behavior live in
 `forest_labeler_core/feedback_event_store.py`; QGIS adapters determine
 project-local paths and translate QGIS lifecycle activity into event records.
+Read-only feedback inspection is allowed in the UI; mutation, cleanup, or
+sandbox testing should be implemented as explicit service commands rather than
+manual database edits.
 
 Learning-scope policy lives in `forest_labeler_core/learning_scopes.py`. It
 defines project, user, team, and universal evidence; compatibility rules;

@@ -43,6 +43,8 @@ Start simple and local:
   database.
 - Keep `forest_labeler_canopy_attempts.csv` as an explicit user-triggered
   readable export, not an automatic sidecar and not the source of truth.
+- Provide a read-only feedback inspector before adding any destructive cleanup
+  or sandbox testing controls.
 - Summarize feedback by mode and tightness.
 - Use `forest_labeler_core/feedback.py` for QGIS-independent feedback validation and summary rules.
 
