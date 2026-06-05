@@ -23,9 +23,11 @@ from ..forest_labeler_core.feedback_event_store import latest_feedback_event_typ
 from .canopy_metrics import recalculate_canopy_chm_metrics_by_id
 
 
-# Disabled until QGIS/GeoPackage edit-buffer writes are isolated from background
-# metric and feedback updates. Core labeling must never risk provider save locks.
+# Lifecycle feedback and CHM automation are disabled until QGIS/GeoPackage
+# edit-buffer writes are isolated from background updates. Geometry-only metrics
+# remain enabled because users expect area/radius/diameter to track manual edits.
 AUTO_LIFECYCLE_MONITOR_ENABLED = False
+AUTO_GEOMETRY_METRICS_ENABLED = True
 
 
 class CanopyLifecycleMonitor:
@@ -43,25 +45,25 @@ class CanopyLifecycleMonitor:
         self.connected_signals = []
 
     def watch(self, layer, chm_layer=None):
-        if not AUTO_LIFECYCLE_MONITOR_ENABLED:
-            self.disconnect()
-            return
         self.chm_layer = chm_layer
         if layer is self.layer:
-            self.refresh()
+            if AUTO_LIFECYCLE_MONITOR_ENABLED:
+                self.refresh()
             return
         self.disconnect()
         if layer is None or layer.fields().indexOf("attempt_id") == -1:
             return
         self.layer = layer
-        self.refresh()
-        self._connect(layer.featureAdded, self._feature_added)
-        self._connect(layer.attributeValueChanged, self._attribute_changed)
-        self._connect(layer.geometryChanged, self._geometry_changed)
-        self._connect(layer.featureDeleted, self._feature_deleted)
-        self._connect_optional(layer, "beforeCommitChanges", self._before_commit_changes)
-        self._connect_optional(layer, "editCommandEnded", self._edit_command_ended)
-        self._connect_optional(layer, "editCommandDestroyed", self._edit_command_ended)
+        if AUTO_LIFECYCLE_MONITOR_ENABLED:
+            self.refresh()
+            self._connect(layer.featureAdded, self._feature_added)
+            self._connect(layer.attributeValueChanged, self._attribute_changed)
+            self._connect(layer.featureDeleted, self._feature_deleted)
+            self._connect_optional(layer, "beforeCommitChanges", self._before_commit_changes)
+            self._connect_optional(layer, "editCommandEnded", self._edit_command_ended)
+            self._connect_optional(layer, "editCommandDestroyed", self._edit_command_ended)
+        if AUTO_GEOMETRY_METRICS_ENABLED:
+            self._connect(layer.geometryChanged, self._geometry_changed)
 
     def refresh(self):
         if self.layer is None:
@@ -171,7 +173,6 @@ class CanopyLifecycleMonitor:
     def _geometry_changed(self, feature_id, geometry):
         if self._is_temporary_feature_id(feature_id) or self._has_uncommitted_added_features():
             return
-        previous = self.records_by_feature_id.get(feature_id)
         feature = self._feature(feature_id)
         current_geometry = geometry
         try:
@@ -180,6 +181,9 @@ class CanopyLifecycleMonitor:
         except Exception:
             current_geometry = feature.geometry() if feature is not None else geometry
         self._update_geometry_metrics(feature_id, current_geometry)
+        if not AUTO_LIFECYCLE_MONITOR_ENABLED:
+            return
+        previous = self.records_by_feature_id.get(feature_id)
         self._schedule_chm_metrics_update(feature_id, current_geometry)
         self._refresh_feature(feature_id)
         current = self.records_by_feature_id.get(feature_id)
