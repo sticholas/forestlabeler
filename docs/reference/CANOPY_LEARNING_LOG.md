@@ -4,7 +4,7 @@ Forest Labeler records canopy lifecycle events in a project-local SQLite
 database:
 
 ```text
-forest_labeler_tool_files/forest_labeler_feedback.sqlite3
+<project_name>_forest_labeler_files/forest_labeler_feedback.sqlite3
 ```
 
 This event store is the durable feedback trail for future tuning, QA summaries,
@@ -12,7 +12,7 @@ and learning systems. A readable CSV can be exported from **Review & QA** when a
 user wants one:
 
 ```text
-forest_labeler_tool_files/forest_labeler_canopy_attempts.csv
+<project_name>_forest_labeler_files/forest_labeler_canopy_attempts.csv
 ```
 
 The CSV is a snapshot generated from SQLite, not a second source of truth.

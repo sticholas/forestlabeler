@@ -59,17 +59,17 @@ the currently selected canopy. It writes the rejected attempt to the durable
 feedback event store before removing the feature. If no canopy is selected,
 Forest Labeler leaves `Ctrl+Z` available for normal QGIS undo behavior.
 
-Forest Labeler stores its project-local tool files in a folder next to the QGIS
-project:
+Forest Labeler stores its project-local tool files in a project-specific folder
+next to the QGIS project. For a project named `Labelling.qgz`, the folder is:
 
 ```text
-forest_labeler_tool_files/
+Labelling_forest_labeler_files/
 ```
 
 The durable event database is stored inside that folder:
 
 ```text
-forest_labeler_tool_files/forest_labeler_feedback.sqlite3
+Labelling_forest_labeler_files/forest_labeler_feedback.sqlite3
 ```
 
 The SQLite database is the source of truth for future QA summaries, learning,
@@ -77,7 +77,7 @@ and team review tooling. Open **Review & QA** and click **Export CSV** only when
 you want a readable snapshot. The export is written to:
 
 ```text
-forest_labeler_tool_files/forest_labeler_canopy_attempts.csv
+Labelling_forest_labeler_files/forest_labeler_canopy_attempts.csv
 ```
 
 Key identity fields:

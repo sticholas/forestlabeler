@@ -343,6 +343,6 @@ Thirty-ninth migration slice:
 
 Fortieth migration slice:
 
-- Label Canopy now writes durable lifecycle events to `forest_labeler_tool_files/forest_labeler_feedback.sqlite3`, preserving mode/tightness context even if generated polygons are later removed.
+- Label Canopy now writes durable lifecycle events to `<project_name>_forest_labeler_files/forest_labeler_feedback.sqlite3`, preserving mode/tightness context even if generated polygons are later removed.
 - Review tools now include `Reject + Remove`, which logs selected canopies as rejected and removes them from the clean target layer.
 - This closes the feedback bias where only kept/accepted crowns remained available for future setting evaluation.

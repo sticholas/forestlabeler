@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import os
 import shutil
 from dataclasses import dataclass
 from dataclasses import replace
@@ -27,6 +28,10 @@ from ..forest_labeler_core.feedback_event_store import (
     append_feedback_event,
     feedback_event_export_rows,
     latest_feedback_event_type,
+)
+from ..forest_labeler_core.project_storage import (
+    LEGACY_PROJECT_STORAGE_FOLDER,
+    project_storage_folder_name,
 )
 
 
@@ -310,7 +315,9 @@ def feedback_event_store_path():
 
 
 def _project_feedback_directory():
-    return _project_home_directory() / "forest_labeler_tool_files"
+    directory = _project_home_directory() / project_storage_folder_name(_project_file_name())
+    _migrate_legacy_feedback_directory(directory)
+    return directory
 
 
 def _project_home_directory():
@@ -320,6 +327,38 @@ def _project_home_directory():
         file_name = project.fileName()
         home_path = Path(file_name).parent if file_name else Path.home()
     return home_path
+
+
+def _project_file_name():
+    try:
+        file_name = QgsProject.instance().fileName()
+    except Exception:
+        return ""
+    return Path(file_name).name if file_name else ""
+
+
+def _migrate_legacy_feedback_directory(new_directory):
+    legacy_directory = _project_home_directory() / LEGACY_PROJECT_STORAGE_FOLDER
+    try:
+        if not legacy_directory.exists() or legacy_directory == new_directory:
+            return
+        if not new_directory.exists():
+            os.replace(str(legacy_directory), str(new_directory))
+            return
+        migrated_all = True
+        for legacy_child in legacy_directory.iterdir():
+            target = new_directory / legacy_child.name
+            if target.exists():
+                migrated_all = False
+                continue
+            if legacy_child.is_dir():
+                shutil.copytree(str(legacy_child), str(target))
+            else:
+                shutil.copy2(str(legacy_child), str(target))
+        if migrated_all:
+            shutil.rmtree(str(legacy_directory))
+    except Exception:
+        pass
 
 
 def _copy_legacy_feedback_store(new_path):
