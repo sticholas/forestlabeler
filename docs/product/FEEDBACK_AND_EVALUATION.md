@@ -39,9 +39,9 @@ Start simple and local:
 - Add review fields to output layers where available.
 - Add a small feedback panel for selected canopy features.
 - Store immutable lifecycle events in the project-local
-  `forest_labeler_feedback.sqlite3` database.
-- Keep `forest_labeler_canopy_attempts.csv` as a readable compatibility export,
-  not the source of truth.
+  `forest_labeler_tool_files/forest_labeler_feedback.sqlite3` database.
+- Keep `forest_labeler_canopy_attempts.csv` as an explicit user-triggered
+  readable export, not an automatic sidecar and not the source of truth.
 - Summarize feedback by mode and tightness.
 - Use `forest_labeler_core/feedback.py` for QGIS-independent feedback validation and summary rules.
 

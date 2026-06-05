@@ -1,10 +1,21 @@
 # Canopy Learning Log
 
-Forest Labeler records canopy creation and rejection events in a project-local
-CSV named `forest_labeler_canopy_attempts.csv`. This log is a feedback trail for
-future tuning, QA summaries, and learning systems. It is intentionally
-sidecar-based for now so the production canopy layer can stay clean while the
-feedback model is still evolving.
+Forest Labeler records canopy lifecycle events in a project-local SQLite
+database:
+
+```text
+forest_labeler_tool_files/forest_labeler_feedback.sqlite3
+```
+
+This event store is the durable feedback trail for future tuning, QA summaries,
+and learning systems. A readable CSV can be exported from **Review & QA** when a
+user wants one:
+
+```text
+forest_labeler_tool_files/forest_labeler_canopy_attempts.csv
+```
+
+The CSV is a snapshot generated from SQLite, not a second source of truth.
 
 ## Identity Model
 
@@ -22,10 +33,10 @@ feedback model is still evolving.
 
 ## Project-Scoped Learning
 
-The current learning log is scoped to a QGIS project folder. That is deliberate:
-canopy behavior depends on imagery, CHM resolution, forest type, digitizing
-standards, and local user goals. A project-scoped log lets each project adapt
-without mixing incompatible training signals.
+The current learning store is scoped to a QGIS project folder. That is
+deliberate: canopy behavior depends on imagery, CHM resolution, forest type,
+digitizing standards, and local user goals. A project-scoped store lets each
+project adapt without mixing incompatible training signals.
 
 Future team learning should promote these project-local logs into a shared
 GeoPackage table, database, or review service. That shared layer should use

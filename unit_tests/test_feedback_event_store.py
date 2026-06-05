@@ -14,6 +14,7 @@ from forest_labeler_core.canopy_attempt_log import (
 from forest_labeler_core.feedback_event_store import (
     SCHEMA_VERSION,
     append_feedback_event,
+    feedback_event_export_rows,
     feedback_event_id,
     latest_feedback_event_type,
     recommendation_evidence_from_event_store,
@@ -92,6 +93,26 @@ class FeedbackEventStoreTest(unittest.TestCase):
             latest_feedback_event_type(self.database_path, self.created_record.attempt_id),
             CANOPY_ATTEMPT_REJECTED_REMOVED,
         )
+
+    def test_exports_event_rows_with_attempt_context(self):
+        rejected = replace(
+            self.created_record,
+            timestamp_utc="2026-06-04T00:01:00+00:00",
+            event=CANOPY_ATTEMPT_REJECTED_REMOVED,
+            review_status="rejected",
+            note="manual cleanup",
+        )
+        append_feedback_event(self.database_path, self.created_record)
+        append_feedback_event(self.database_path, rejected)
+
+        rows = feedback_event_export_rows(self.database_path)
+
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["event"], CANOPY_ATTEMPT_CREATED)
+        self.assertEqual(rows[1]["event"], CANOPY_ATTEMPT_REJECTED_REMOVED)
+        self.assertEqual(rows[1]["attempt_id"], "canopy-abc123")
+        self.assertEqual(rows[1]["canopy_mode"], "DENSE")
+        self.assertEqual(rows[1]["note"], "manual cleanup")
 
     def test_event_identity_distinguishes_repeated_lifecycle_transitions(self):
         later_duplicate = replace(self.created_record, timestamp_utc="2026-06-04T00:05:00+00:00")

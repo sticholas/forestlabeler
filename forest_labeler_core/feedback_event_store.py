@@ -145,6 +145,70 @@ def latest_feedback_event_type(path, attempt_id):
     return row[0] if row is not None else None
 
 
+def feedback_event_export_rows(path):
+    """Return CSV-ready lifecycle rows from the durable event store."""
+    database_path = Path(path)
+    if not database_path.exists():
+        return ()
+
+    with sqlite3.connect(str(database_path)) as connection:
+        _initialize_schema(connection)
+        rows = connection.execute(
+            """
+            SELECT
+                attempts.attempt_id,
+                events.timestamp_utc,
+                events.event_type,
+                attempts.project_id,
+                attempts.project_file,
+                attempts.layer_id,
+                attempts.layer_name,
+                attempts.canopy_fid,
+                attempts.qgis_feature_id,
+                attempts.canopy_mode,
+                attempts.crown_tightness,
+                attempts.seed_radius_m,
+                attempts.area_m2,
+                attempts.apex_height_m,
+                attempts.refined,
+                attempts.chm_id,
+                attempts.ortho_id,
+                attempts.species,
+                COALESCE(events.review_status, ''),
+                events.note
+            FROM events
+            JOIN attempts ON attempts.attempt_id = events.attempt_id
+            ORDER BY events.timestamp_utc, events.rowid
+            """
+        ).fetchall()
+
+    return tuple(
+        {
+            "attempt_id": row[0],
+            "timestamp_utc": row[1],
+            "event": row[2],
+            "project_id": row[3],
+            "project_file": row[4],
+            "layer_id": row[5],
+            "layer_name": row[6],
+            "canopy_fid": row[7],
+            "qgis_feature_id": row[8],
+            "canopy_mode": row[9],
+            "crown_tightness": row[10],
+            "seed_radius_m": row[11],
+            "area_m2": row[12],
+            "apex_height_m": row[13],
+            "refined": row[14],
+            "chm_id": row[15],
+            "ortho_id": row[16],
+            "species": row[17],
+            "review_status": row[18],
+            "note": row[19],
+        }
+        for row in rows
+    )
+
+
 def _initialize_schema(connection):
     connection.execute("PRAGMA foreign_keys = ON")
     connection.execute(

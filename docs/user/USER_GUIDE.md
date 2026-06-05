@@ -55,24 +55,30 @@ Open **Review & QA** to mark selected canopy polygons:
   universal baseline.
 
 While **Label Canopy** is active, `Ctrl+Z` is a quick reject/remove shortcut for
-the currently selected canopy. It writes the rejected attempt to the feedback
-CSV before removing the feature. If no canopy is selected, Forest Labeler leaves
-`Ctrl+Z` available for normal QGIS undo behavior.
+the currently selected canopy. It writes the rejected attempt to the durable
+feedback event store before removing the feature. If no canopy is selected,
+Forest Labeler leaves `Ctrl+Z` available for normal QGIS undo behavior.
 
-Forest Labeler writes a project-local feedback CSV named:
+Forest Labeler stores its project-local tool files in a folder next to the QGIS
+project:
 
 ```text
-forest_labeler_canopy_attempts.csv
+forest_labeler_tool_files/
 ```
 
-Forest Labeler also writes a durable project-local event database named:
+The durable event database is stored inside that folder:
 
 ```text
-forest_labeler_feedback.sqlite3
+forest_labeler_tool_files/forest_labeler_feedback.sqlite3
 ```
 
 The SQLite database is the source of truth for future QA summaries, learning,
-and team review tooling. The CSV remains a readable compatibility export.
+and team review tooling. Open **Review & QA** and click **Export CSV** only when
+you want a readable snapshot. The export is written to:
+
+```text
+forest_labeler_tool_files/forest_labeler_canopy_attempts.csv
+```
 
 Key identity fields:
 

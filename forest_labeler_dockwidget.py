@@ -69,6 +69,10 @@ from .forest_labeler_qgis.canopy_review import (
     summarize_canopy_layer_reviews,
 )
 from .forest_labeler_qgis.canopy_lifecycle_monitor import CanopyLifecycleMonitor
+from .forest_labeler_qgis.canopy_attempt_log import (
+    canopy_attempt_csv_export_path,
+    export_canopy_attempt_csv,
+)
 from .forest_labeler_qgis.canopy_schema import missing_canopy_schema_fields, repair_canopy_schema
 from .forest_labeler_qgis.training_polygon_schema import (
     missing_training_polygon_schema_fields,
@@ -121,6 +125,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.repairCanopySchemaButton.clicked.connect(self._repair_canopy_schema)
         self.summarizeCanopyReviewsButton.clicked.connect(self._summarize_canopy_reviews)
         self.useBestCanopyToolButton.clicked.connect(self._use_best_canopy_tool)
+        self.exportCanopyFeedbackCsvButton.clicked.connect(self._export_canopy_feedback_csv)
         self.selectUnreviewedCanopiesButton.clicked.connect(
             lambda: self._select_canopies_by_review_filter(CANOPY_REVIEW_FILTER_UNREVIEWED)
         )
@@ -241,6 +246,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.repairCanopySchemaButton.setProperty("buttonRole", "secondary")
         self.summarizeCanopyReviewsButton.setProperty("buttonRole", "secondary")
         self.useBestCanopyToolButton.setProperty("buttonRole", "secondary")
+        self.exportCanopyFeedbackCsvButton.setProperty("buttonRole", "secondary")
         self.selectUnreviewedCanopiesButton.setProperty("buttonRole", "secondary")
         self.selectAttentionCanopiesButton.setProperty("buttonRole", "secondary")
         self.markCanopyAcceptedButton.setProperty("buttonRole", "secondary")
@@ -716,11 +722,41 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.statusTextEdit.setVisible(True)
         self._push_message("Canopy recommendation applied.", Qgis.Success)
 
+    def _export_canopy_feedback_csv(self):
+        path = canopy_attempt_csv_export_path()
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Export Canopy Feedback CSV",
+            (
+                "Export a readable CSV snapshot of Forest Labeler canopy lifecycle events?\n\n"
+                "The CSV will be written next to this QGIS project inside:\n\n"
+                f"{path.parent}\n\n"
+                "The SQLite database remains the source of truth for recommendations."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.Yes,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        result = export_canopy_attempt_csv(path)
+        if result.ok:
+            self.statusSummaryLabel.setText("Canopy feedback CSV exported.")
+            self.statusTextEdit.setPlainText("\n".join(result.warnings + (result.path,)))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy feedback CSV exported.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Could not export canopy feedback CSV.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy feedback CSV export failed.", Qgis.Warning)
+
     def _update_canopy_review_controls(self):
         show_review = self.canopyReviewToolsCheckBox.isChecked()
         self.repairCanopySchemaButton.setVisible(False)
         self.summarizeCanopyReviewsButton.setVisible(show_review)
         self.useBestCanopyToolButton.setVisible(show_review)
+        self.exportCanopyFeedbackCsvButton.setVisible(show_review)
         self.selectUnreviewedCanopiesButton.setVisible(show_review)
         self.selectAttentionCanopiesButton.setVisible(show_review)
         self.canopyReviewNoteLineEdit.setVisible(show_review)

@@ -121,10 +121,11 @@ Forest Labeler records enough context to support future QA and learning:
 - canopy mode, strength/tightness, radius, area, apex height, species, and review
   status
 
-The project-local `forest_labeler_feedback.sqlite3` database is the durable
-source of truth for lifecycle events. The CSV learning log remains a readable
-compatibility export. Pure event identity, schema, and persistence behavior
-live in `forest_labeler_core/feedback_event_store.py`; QGIS adapters determine
+The project-local `forest_labeler_tool_files/forest_labeler_feedback.sqlite3`
+database is the durable source of truth for lifecycle events. The CSV learning
+log is an explicit readable export generated from SQLite when the user requests
+it. Pure event identity, schema, and persistence behavior live in
+`forest_labeler_core/feedback_event_store.py`; QGIS adapters determine
 project-local paths and translate QGIS lifecycle activity into event records.
 
 Learning-scope policy lives in `forest_labeler_core/learning_scopes.py`. It

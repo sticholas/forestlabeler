@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import shutil
 from dataclasses import dataclass
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -20,10 +21,13 @@ from ..forest_labeler_core.canopy_attempt_log import (
     CANOPY_ATTEMPT_UNSURE,
     CanopyAttemptLogRecord,
     canopy_attempt_log_fieldnames,
-    canopy_attempt_log_row,
     new_canopy_attempt_id,
 )
-from ..forest_labeler_core.feedback_event_store import append_feedback_event, latest_feedback_event_type
+from ..forest_labeler_core.feedback_event_store import (
+    append_feedback_event,
+    feedback_event_export_rows,
+    latest_feedback_event_type,
+)
 
 
 @dataclass(frozen=True)
@@ -266,42 +270,50 @@ def append_canopy_attempt_log(record):
             (),
         )
 
-    csv_result = _append_canopy_attempt_csv(record)
-    warnings = ()
-    if not csv_result.ok:
-        warnings = csv_result.errors
     return CanopyAttemptLogResult(
         True,
         event_store_result.path,
         (),
-        warnings,
+        (),
     )
 
 
-def _append_canopy_attempt_csv(record):
-    path = _attempt_log_path()
+def export_canopy_attempt_csv(path=None):
+    """Export a readable CSV snapshot from the durable project event store."""
+    export_path = Path(path) if path is not None else canopy_attempt_csv_export_path()
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        write_header = _should_write_header(path)
-        with path.open("a", newline="", encoding="utf-8") as handle:
+        export_path.parent.mkdir(parents=True, exist_ok=True)
+        rows = feedback_event_export_rows(feedback_event_store_path())
+        with export_path.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=canopy_attempt_log_fieldnames())
-            if write_header:
-                writer.writeheader()
-            writer.writerow(canopy_attempt_log_row(record))
-        return CanopyAttemptLogResult(True, str(path), (), ())
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(
+                    {
+                        field: "" if row.get(field) is None else row.get(field)
+                        for field in canopy_attempt_log_fieldnames()
+                    }
+                )
+        return CanopyAttemptLogResult(True, str(export_path), (), (f"Exported {len(rows)} canopy event row(s).",))
     except Exception as exc:
-        return CanopyAttemptLogResult(False, str(path), (f"Could not write canopy attempt CSV export: {exc}",), ())
+        return CanopyAttemptLogResult(False, str(export_path), (f"Could not write canopy attempt CSV export: {exc}",), ())
 
 
-def _attempt_log_path():
+def canopy_attempt_csv_export_path():
     return _project_feedback_directory() / "forest_labeler_canopy_attempts.csv"
 
 
 def feedback_event_store_path():
-    return _project_feedback_directory() / "forest_labeler_feedback.sqlite3"
+    path = _project_feedback_directory() / "forest_labeler_feedback.sqlite3"
+    _copy_legacy_feedback_store(path)
+    return path
 
 
 def _project_feedback_directory():
+    return _project_home_directory() / "forest_labeler_tool_files"
+
+
+def _project_home_directory():
     project = QgsProject.instance()
     home_path = Path(project.homePath()) if project.homePath() else None
     if home_path is None or str(home_path) == ".":
@@ -310,15 +322,14 @@ def _project_feedback_directory():
     return home_path
 
 
-def _should_write_header(path):
-    if not path.exists() or path.stat().st_size == 0:
-        return True
+def _copy_legacy_feedback_store(new_path):
+    legacy_path = _project_home_directory() / "forest_labeler_feedback.sqlite3"
     try:
-        with path.open("r", newline="", encoding="utf-8") as handle:
-            existing_header = handle.readline().strip().split(",")
-        return existing_header != canopy_attempt_log_fieldnames()
+        if legacy_path.exists() and not new_path.exists():
+            new_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(legacy_path), str(new_path))
     except Exception:
-        return False
+        pass
 
 
 def _project_id():
