@@ -160,6 +160,8 @@ class CanopyLifecycleMonitor:
             )
 
     def _geometry_changed(self, feature_id, geometry):
+        if self._is_temporary_feature_id(feature_id):
+            return
         previous = self.records_by_feature_id.get(feature_id)
         feature = self._feature(feature_id)
         current_geometry = geometry
@@ -182,7 +184,7 @@ class CanopyLifecycleMonitor:
             )
 
     def _schedule_chm_metrics_update(self, feature_id, geometry=None):
-        if self.chm_layer is None:
+        if self.chm_layer is None or self._is_temporary_feature_id(feature_id):
             return
         self.pending_chm_feature_ids.add(feature_id)
         if geometry is not None:
@@ -209,7 +211,7 @@ class CanopyLifecycleMonitor:
             self._update_chm_metrics(feature_id, geometry=geometries.get(feature_id))
 
     def _update_chm_metrics(self, feature_id, geometry=None):
-        if self.chm_layer is None:
+        if self.chm_layer is None or self._is_temporary_feature_id(feature_id):
             return
         self.invalidating_feature_ids.add(feature_id)
         try:
@@ -226,6 +228,8 @@ class CanopyLifecycleMonitor:
             self._report(result, "Canopy CHM metrics recalculated.")
 
     def _update_geometry_metrics(self, feature_id, geometry):
+        if self._is_temporary_feature_id(feature_id):
+            return
         updates = canopy_geometry_metric_updates(geometry.area())
         if not updates:
             return
@@ -284,6 +288,12 @@ class CanopyLifecycleMonitor:
             self.layer.getFeatures(QgsFeatureRequest().setFilterFid(feature_id)),
             None,
         )
+
+    def _is_temporary_feature_id(self, feature_id):
+        try:
+            return int(feature_id) < 0
+        except Exception:
+            return False
 
     def _report(self, result, success_message):
         if self.iface is None:
