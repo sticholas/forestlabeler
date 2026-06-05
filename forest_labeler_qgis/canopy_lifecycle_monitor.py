@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from qgis.PyQt.QtCore import QTimer
-from qgis.core import QgsFeatureRequest
+from qgis.core import QgsFeatureRequest, QgsGeometry
 
 from ..forest_labeler_core.canopy_attributes import canopy_geometry_metric_updates
 from .canopy_attempt_log import (
@@ -33,7 +33,9 @@ class CanopyLifecycleMonitor:
         self.invalidating_feature_ids = set()
         self.chm_layer = None
         self.pending_chm_feature_ids = set()
+        self.pending_chm_geometries = {}
         self.chm_update_scheduled = False
+        self.connected_signals = []
 
     def watch(self, layer, chm_layer=None):
         self.chm_layer = chm_layer
@@ -45,13 +47,12 @@ class CanopyLifecycleMonitor:
             return
         self.layer = layer
         self.refresh()
-        try:
-            layer.featureAdded.connect(self._feature_added)
-            layer.attributeValueChanged.connect(self._attribute_changed)
-            layer.geometryChanged.connect(self._geometry_changed)
-            layer.featureDeleted.connect(self._feature_deleted)
-        except Exception:
-            self.disconnect()
+        self._connect(layer.featureAdded, self._feature_added)
+        self._connect(layer.attributeValueChanged, self._attribute_changed)
+        self._connect(layer.geometryChanged, self._geometry_changed)
+        self._connect(layer.featureDeleted, self._feature_deleted)
+        self._connect_optional(layer, "editCommandEnded", self._edit_command_ended)
+        self._connect_optional(layer, "editCommandDestroyed", self._edit_command_ended)
 
     def refresh(self):
         if self.layer is None:
@@ -61,23 +62,31 @@ class CanopyLifecycleMonitor:
             self._remember(feature)
 
     def disconnect(self):
-        if self.layer is not None:
-            for signal, handler in (
-                (self.layer.featureAdded, self._feature_added),
-                (self.layer.attributeValueChanged, self._attribute_changed),
-                (self.layer.geometryChanged, self._geometry_changed),
-                (self.layer.featureDeleted, self._feature_deleted),
-            ):
-                try:
-                    signal.disconnect(handler)
-                except Exception:
-                    pass
+        for signal, handler in self.connected_signals:
+            try:
+                signal.disconnect(handler)
+            except Exception:
+                pass
+        self.connected_signals = []
         self.layer = None
         self.chm_layer = None
         self.records_by_feature_id = {}
         self.invalidating_feature_ids = set()
         self.pending_chm_feature_ids = set()
+        self.pending_chm_geometries = {}
         self.chm_update_scheduled = False
+
+    def _connect(self, signal, handler):
+        try:
+            signal.connect(handler)
+            self.connected_signals.append((signal, handler))
+        except Exception:
+            pass
+
+    def _connect_optional(self, layer, signal_name, handler):
+        signal = getattr(layer, signal_name, None)
+        if signal is not None:
+            self._connect(signal, handler)
 
     def _feature_added(self, feature_id):
         feature = self._feature(feature_id)
@@ -160,7 +169,7 @@ class CanopyLifecycleMonitor:
         except Exception:
             current_geometry = feature.geometry() if feature is not None else geometry
         self._update_geometry_metrics(feature_id, current_geometry)
-        self._schedule_chm_metrics_update(feature_id)
+        self._schedule_chm_metrics_update(feature_id, current_geometry)
         self._refresh_feature(feature_id)
         current = self.records_by_feature_id.get(feature_id)
         if previous is None or current is None:
@@ -172,23 +181,34 @@ class CanopyLifecycleMonitor:
                 note="Canopy geometry edited in QGIS",
             )
 
-    def _schedule_chm_metrics_update(self, feature_id):
+    def _schedule_chm_metrics_update(self, feature_id, geometry=None):
         if self.chm_layer is None:
             return
         self.pending_chm_feature_ids.add(feature_id)
+        if geometry is not None:
+            try:
+                self.pending_chm_geometries[feature_id] = QgsGeometry(geometry)
+            except Exception:
+                pass
         if self.chm_update_scheduled:
             return
         self.chm_update_scheduled = True
-        QTimer.singleShot(0, self._flush_chm_metrics_updates)
+        QTimer.singleShot(250, self._flush_chm_metrics_updates)
+
+    def _edit_command_ended(self, *_args):
+        if self.pending_chm_feature_ids:
+            QTimer.singleShot(0, self._flush_chm_metrics_updates)
 
     def _flush_chm_metrics_updates(self):
         self.chm_update_scheduled = False
         feature_ids = tuple(self.pending_chm_feature_ids)
+        geometries = self.pending_chm_geometries
         self.pending_chm_feature_ids = set()
+        self.pending_chm_geometries = {}
         for feature_id in feature_ids:
-            self._update_chm_metrics(feature_id)
+            self._update_chm_metrics(feature_id, geometry=geometries.get(feature_id))
 
-    def _update_chm_metrics(self, feature_id):
+    def _update_chm_metrics(self, feature_id, geometry=None):
         if self.chm_layer is None:
             return
         self.invalidating_feature_ids.add(feature_id)
@@ -197,6 +217,7 @@ class CanopyLifecycleMonitor:
                 self.layer,
                 self.chm_layer,
                 feature_id,
+                geometry=geometry,
             )
         finally:
             self.invalidating_feature_ids.discard(feature_id)
