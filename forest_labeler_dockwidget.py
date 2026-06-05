@@ -71,6 +71,7 @@ from .forest_labeler_qgis.canopy_review import (
     format_canopy_event_recommendation,
 )
 from .forest_labeler_qgis.canopy_lifecycle_monitor import CanopyLifecycleMonitor
+from .forest_labeler_qgis.canopy_metrics import recalculate_selected_canopy_chm_metrics
 from .forest_labeler_qgis.canopy_attempt_log import (
     backup_canopy_feedback_store,
     canopy_attempt_csv_export_path,
@@ -130,6 +131,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.useBestCanopyToolButton.clicked.connect(self._use_best_canopy_tool)
         self.inspectCanopyFeedbackButton.clicked.connect(self._inspect_canopy_feedback)
         self.backupCanopyFeedbackButton.clicked.connect(self._backup_canopy_feedback)
+        self.recalculateCanopyChmMetricsButton.clicked.connect(self._recalculate_canopy_chm_metrics)
         self.exportCanopyFeedbackCsvButton.clicked.connect(self._export_canopy_feedback_csv)
         self.selectUnreviewedCanopiesButton.clicked.connect(
             lambda: self._select_canopies_by_review_filter(CANOPY_REVIEW_FILTER_UNREVIEWED)
@@ -253,6 +255,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.useBestCanopyToolButton.setProperty("buttonRole", "secondary")
         self.inspectCanopyFeedbackButton.setProperty("buttonRole", "secondary")
         self.backupCanopyFeedbackButton.setProperty("buttonRole", "secondary")
+        self.recalculateCanopyChmMetricsButton.setProperty("buttonRole", "secondary")
         self.exportCanopyFeedbackCsvButton.setProperty("buttonRole", "secondary")
         self.selectUnreviewedCanopiesButton.setProperty("buttonRole", "secondary")
         self.selectAttentionCanopiesButton.setProperty("buttonRole", "secondary")
@@ -762,6 +765,24 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self.statusTextEdit.setVisible(True)
             self._push_message("Canopy feedback backup failed.", Qgis.Warning)
 
+    def _recalculate_canopy_chm_metrics(self):
+        result = recalculate_selected_canopy_chm_metrics(
+            self._current_layer(self.targetLayerComboBox),
+            self._current_layer(self.chmLayerComboBox),
+        )
+        if result.ok:
+            self.statusSummaryLabel.setText(
+                f"Recalculated CHM metrics for {result.updated_count} canopy/canopies."
+            )
+            self.statusTextEdit.setPlainText("\n".join(result.warnings))
+            self.statusTextEdit.setVisible(bool(result.warnings))
+            self._push_message("Canopy CHM metrics recalculated.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Could not recalculate canopy CHM metrics.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors + result.warnings))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy CHM metric recalculation failed.", Qgis.Warning)
+
     def _export_canopy_feedback_csv(self):
         path = canopy_attempt_csv_export_path()
         answer = QtWidgets.QMessageBox.question(
@@ -798,6 +819,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.useBestCanopyToolButton.setVisible(show_review)
         self.inspectCanopyFeedbackButton.setVisible(show_review)
         self.backupCanopyFeedbackButton.setVisible(show_review)
+        self.recalculateCanopyChmMetricsButton.setVisible(show_review)
         self.exportCanopyFeedbackCsvButton.setVisible(show_review)
         self.selectUnreviewedCanopiesButton.setVisible(show_review)
         self.selectAttentionCanopiesButton.setVisible(show_review)

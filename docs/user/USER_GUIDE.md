@@ -130,7 +130,16 @@ when they exist on the layer:
 
 The updated radius is an equivalent-circle radius derived from the revised
 polygon area. Raster-derived fields such as `apex_h` stay unchanged after a
-manual geometry edit until a future CHM recalculation workflow is run.
+manual geometry edit until **Recalc CHM** is run from **Review & QA**.
+
+Use **Recalc CHM** after manual edits or CHM changes to update selected canopy
+features from the selected CHM raster:
+
+- `apex_h`: maximum sampled CHM value inside the canopy polygon.
+- `chm_id`: selected CHM source path.
+
+Because these are material metric/provenance changes, previously reviewed
+crowns may return to `unreviewed` and need review again.
 
 ## Create Training Polygon
 

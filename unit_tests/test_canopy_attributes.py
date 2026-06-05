@@ -6,6 +6,7 @@ from forest_labeler_core.canopy_attributes import (
     canopy_geometry_metric_updates,
     next_numeric_fid,
 )
+from forest_labeler_core.canopy_metrics import canopy_chm_metric_updates
 
 
 class CanopyAttributeTest(unittest.TestCase):
@@ -91,6 +92,12 @@ class CanopyAttributeTest(unittest.TestCase):
     def test_canopy_geometry_metric_updates_ignore_invalid_area(self):
         self.assertEqual(canopy_geometry_metric_updates(0), {})
         self.assertEqual(canopy_geometry_metric_updates(None), {})
+
+    def test_canopy_chm_metric_updates_round_apex_and_source(self):
+        updates = canopy_chm_metric_updates(12.3456, "X:/chm.tif")
+
+        self.assertEqual(updates["apex_h"], 12.35)
+        self.assertEqual(updates["chm_id"], "X:/chm.tif")
 
 
 if __name__ == "__main__":

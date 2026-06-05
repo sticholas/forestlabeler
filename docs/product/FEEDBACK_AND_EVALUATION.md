@@ -53,6 +53,8 @@ Start simple and local:
   agent-driven data manipulation.
 - Provide read-only recommendation lab output before adding automated tuning,
   so users and agents can compare ranked evidence without mutating data.
+- Keep CHM metric recalculation inside Review & QA so users can refresh
+  raster-derived attributes after edits without cluttering the labeling path.
 - Summarize feedback by mode and tightness.
 - Use `forest_labeler_core/feedback.py` for QGIS-independent feedback validation and summary rules.
 

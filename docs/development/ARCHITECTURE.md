@@ -142,6 +142,9 @@ future destructive cleanup, migration, or sandbox experiment.
 Recommendation lab analysis is read-only and belongs in the review/inspection
 lane. It can rank evidence and guide review effort, but it must not write data
 or change labeling settings without explicit user action.
+CHM metric recalculation is a Review & QA operation. It may update selected
+feature attributes and trigger review invalidation through the canopy lifecycle
+monitor.
 
 Learning-scope policy lives in `forest_labeler_core/learning_scopes.py`. It
 defines project, user, team, and universal evidence; compatibility rules;
