@@ -235,6 +235,19 @@ def best_canopy_event_recommendation(min_reviewed=3):
     return recommend_canopy_setting(feedback_event_store_path(), min_reviewed=min_reviewed)
 
 
+def format_canopy_event_recommendation(recommendation):
+    """Return review-lane recommendation details without cluttering main tools."""
+    lines = [
+        recommendation.explanation,
+        f"Confidence: {recommendation.confidence}",
+    ]
+    if recommendation.confidence_reasons:
+        lines.append("")
+        lines.append("Confidence reasons:")
+        lines.extend(f"- {reason}" for reason in recommendation.confidence_reasons)
+    return "\n".join(lines)
+
+
 def canopy_feedback_inspection_lines():
     """Return compact read-only feedback store diagnostics for the UI."""
     summary = inspect_feedback_event_store(feedback_event_store_path())
@@ -268,6 +281,11 @@ def canopy_feedback_inspection_lines():
         lines.append("")
         lines.append("Accepted evidence by setting:")
         lines.extend(f"- {setting}: {count}" for setting, count in summary.recommended_setting_counts)
+    recommendation = recommend_canopy_setting(feedback_event_store_path())
+    if recommendation is not None:
+        lines.append("")
+        lines.append("Current recommendation:")
+        lines.extend(format_canopy_event_recommendation(recommendation).splitlines())
     return tuple(lines)
 
 

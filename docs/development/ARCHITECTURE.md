@@ -133,6 +133,9 @@ sandbox testing should be implemented as explicit service commands rather than
 manual database edits.
 Health checks are the gate before future agents or automated tuning consume
 feedback evidence.
+Recommendation confidence belongs in the review/inspection lane, not the
+default labeling lane, unless a future product decision intentionally promotes
+it into the primary workflow.
 
 Learning-scope policy lives in `forest_labeler_core/learning_scopes.py`. It
 defines project, user, team, and universal evidence; compatibility rules;

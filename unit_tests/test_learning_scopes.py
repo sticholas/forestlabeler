@@ -35,6 +35,7 @@ class LearningScopesTest(unittest.TestCase):
         recommendation = choose_learning_recommendation([self.universal], self.context)
 
         self.assertEqual(recommendation.evidence.scope, SCOPE_UNIVERSAL)
+        self.assertEqual(recommendation.confidence, "starter")
         self.assertIn("universal baseline", recommendation.explanation)
 
     def test_project_evidence_overrides_universal_after_minimum_samples(self):
@@ -50,7 +51,41 @@ class LearningScopesTest(unittest.TestCase):
         recommendation = choose_learning_recommendation([self.universal, project], self.context)
 
         self.assertEqual(recommendation.evidence.scope, SCOPE_PROJECT)
+        self.assertEqual(recommendation.confidence, "medium")
         self.assertIn("83.0% accepted across 12 reviewed canopies", recommendation.explanation)
+
+    def test_high_confidence_requires_larger_consistent_sample(self):
+        project = RecommendationEvidence(
+            scope=SCOPE_PROJECT,
+            canopy_mode="DENSE",
+            crown_tightness=17,
+            reviewed_total=24,
+            accepted_rate=0.9,
+            context=self.context,
+        )
+
+        recommendation = choose_learning_recommendation([self.universal, project], self.context)
+
+        self.assertEqual(recommendation.confidence, "high")
+        self.assertIn("24 reviewed compatible canopies.", recommendation.confidence_reasons)
+
+    def test_low_confidence_explains_need_for_more_examples(self):
+        project = RecommendationEvidence(
+            scope=SCOPE_PROJECT,
+            canopy_mode="DENSE",
+            crown_tightness=17,
+            reviewed_total=3,
+            accepted_rate=1.0,
+            context=self.context,
+        )
+
+        recommendation = choose_learning_recommendation([self.universal, project], self.context)
+
+        self.assertEqual(recommendation.confidence, "low")
+        self.assertIn(
+            "More reviewed examples are needed before trusting this strongly.",
+            recommendation.confidence_reasons,
+        )
 
     def test_under_sampled_project_does_not_override_universal(self):
         project = RecommendationEvidence(

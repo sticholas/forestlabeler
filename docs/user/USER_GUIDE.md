@@ -76,8 +76,10 @@ The SQLite database is the source of truth for future QA summaries, learning,
 and team review tooling. Open **Review & QA** and click **Inspect Data** to see
 a read-only summary of attempts, lifecycle events, latest crown states, and
 accepted evidence by setting. The inspector also reports database health checks,
-including crowns that need review after edits or restoration. Click **Export
-CSV** only when you want a readable snapshot. The export is written to:
+including crowns that need review after edits or restoration. Recommendation
+confidence is shown here and when applying **Use Best Setting**, keeping the
+main labeling controls compact. Click **Export CSV** only when you want a
+readable snapshot. The export is written to:
 
 ```text
 Labelling_forest_labeler_files/forest_labeler_canopy_attempts.csv

@@ -47,6 +47,8 @@ Start simple and local:
   or sandbox testing controls.
 - Surface database health checks before allowing future cleanup, agent testing,
   or automated tuning workflows.
+- Keep recommendation confidence and diagnostics inside Review & QA so the
+  primary labeling surface remains compact.
 - Summarize feedback by mode and tightness.
 - Use `forest_labeler_core/feedback.py` for QGIS-independent feedback validation and summary rules.
 

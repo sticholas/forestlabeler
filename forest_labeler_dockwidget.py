@@ -68,6 +68,7 @@ from .forest_labeler_qgis.canopy_review import (
     reject_and_remove_selected_canopies,
     select_canopies_by_review_filter,
     summarize_canopy_layer_reviews,
+    format_canopy_event_recommendation,
 )
 from .forest_labeler_qgis.canopy_lifecycle_monitor import CanopyLifecycleMonitor
 from .forest_labeler_qgis.canopy_attempt_log import (
@@ -705,7 +706,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             "Use Best Canopy Tool",
             (
                 "Apply this explainable recommendation to the Label Canopy controls?\n\n"
-                f"{recommendation.explanation}"
+                f"{format_canopy_event_recommendation(recommendation)}"
             ),
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
             QtWidgets.QMessageBox.Yes,
@@ -721,7 +722,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 crown_tightness_to_percent(evidence.crown_tightness)
             )
         self.statusSummaryLabel.setText("Explainable canopy recommendation applied.")
-        self.statusTextEdit.setPlainText(recommendation.explanation)
+        self.statusTextEdit.setPlainText(format_canopy_event_recommendation(recommendation))
         self.statusTextEdit.setVisible(True)
         self._push_message("Canopy recommendation applied.", Qgis.Success)
 
