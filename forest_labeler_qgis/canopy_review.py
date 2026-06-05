@@ -176,8 +176,12 @@ def reject_and_remove_canopies_by_ids(layer, feature_ids, note=None):
                 warnings.extend(log_result.errors)
                 warnings.append(f"Canopy feature {feature_id} was kept because the rejected attempt was not logged.")
                 continue
+            layer.selectByIds([feature_id])
             if not layer.deleteFeature(feature_id):
                 warnings.append(f"Could not remove canopy feature {feature_id}.")
+                continue
+            if _feature_exists(layer, feature_id):
+                warnings.append(f"QGIS reported deletion, but feature {feature_id} still appears in the edit buffer.")
                 continue
             removed_count += 1
         command.commit()
@@ -191,6 +195,10 @@ def reject_and_remove_canopies_by_ids(layer, feature_ids, note=None):
         )
 
     layer.triggerRepaint()
+    try:
+        layer.removeSelection()
+    except Exception:
+        pass
     return CanopyReviewUpdateResult(
         ok=removed_count > 0,
         updated_count=removed_count,
@@ -392,6 +400,10 @@ def _find_feature(layer, feature_id=None, attempt_id=None):
         if str(feature[attempt_index]) == str(attempt_id):
             return feature
     return None
+
+
+def _feature_exists(layer, feature_id):
+    return next(layer.getFeatures(QgsFeatureRequest().setFilterFid(feature_id)), None) is not None
 
 
 class _LayerEditCommand:

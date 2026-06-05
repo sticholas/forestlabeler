@@ -123,6 +123,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.crownTightnessSlider.valueChanged.connect(self._update_crown_tightness_display)
         self.refreshLayersButton.clicked.connect(self.refresh_layers)
         self.targetLayerComboBox.currentIndexChanged.connect(self._watch_canopy_target_layer)
+        self.chmLayerComboBox.currentIndexChanged.connect(self._watch_canopy_target_layer)
         self.validateProjectButton.clicked.connect(self.validate_project)
         self.activateLabelingButton.clicked.connect(self._request_labeling)
         self.canopyReviewToolsCheckBox.toggled.connect(self._update_canopy_review_controls)
@@ -211,7 +212,10 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def _watch_canopy_target_layer(self, *_args):
         """Observe every deletion path on the selected canopy target layer."""
-        self.canopyLifecycleMonitor.watch(self._current_layer(self.targetLayerComboBox))
+        self.canopyLifecycleMonitor.watch(
+            self._current_layer(self.targetLayerComboBox),
+            chm_layer=self._current_layer(self.chmLayerComboBox),
+        )
 
     def validate_project(self):
         """Validate selected layers and report whether labeling can start."""

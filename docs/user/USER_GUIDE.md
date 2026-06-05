@@ -141,6 +141,10 @@ features from the selected CHM raster:
 Because these are material metric/provenance changes, previously reviewed
 crowns may return to `unreviewed` and need review again.
 
+When the selected CHM is available, Forest Labeler also attempts this CHM metric
+refresh automatically after canopy vertex edits. The manual **Recalc CHM**
+button remains useful for selected/bulk refreshes.
+
 ## Create Training Polygon
 
 Use **Training Polygon** to create configurable training areas.

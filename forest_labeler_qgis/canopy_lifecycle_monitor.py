@@ -19,6 +19,7 @@ from ..forest_labeler_core.canopy_lifecycle import (
     canopy_geometry_change_invalidates_review,
 )
 from ..forest_labeler_core.feedback_event_store import latest_feedback_event_type
+from .canopy_metrics import recalculate_canopy_chm_metrics_by_id
 
 
 class CanopyLifecycleMonitor:
@@ -29,8 +30,10 @@ class CanopyLifecycleMonitor:
         self.layer = None
         self.records_by_feature_id = {}
         self.invalidating_feature_ids = set()
+        self.chm_layer = None
 
-    def watch(self, layer):
+    def watch(self, layer, chm_layer=None):
+        self.chm_layer = chm_layer
         if layer is self.layer:
             self.refresh()
             return
@@ -67,6 +70,7 @@ class CanopyLifecycleMonitor:
                 except Exception:
                     pass
         self.layer = None
+        self.chm_layer = None
         self.records_by_feature_id = {}
         self.invalidating_feature_ids = set()
 
@@ -144,6 +148,7 @@ class CanopyLifecycleMonitor:
     def _geometry_changed(self, feature_id, geometry):
         previous = self.records_by_feature_id.get(feature_id)
         self._update_geometry_metrics(feature_id, geometry)
+        self._update_chm_metrics(feature_id, geometry)
         self._refresh_feature(feature_id)
         current = self.records_by_feature_id.get(feature_id)
         if previous is None or current is None:
@@ -154,6 +159,22 @@ class CanopyLifecycleMonitor:
                 current,
                 note="Canopy geometry edited in QGIS",
             )
+
+    def _update_chm_metrics(self, feature_id, geometry):
+        if self.chm_layer is None:
+            return
+        self.invalidating_feature_ids.add(feature_id)
+        try:
+            result = recalculate_canopy_chm_metrics_by_id(
+                self.layer,
+                self.chm_layer,
+                feature_id,
+                geometry=geometry,
+            )
+        finally:
+            self.invalidating_feature_ids.discard(feature_id)
+        if not result.ok:
+            self._report(result, "Canopy CHM metrics recalculated.")
 
     def _update_geometry_metrics(self, feature_id, geometry):
         updates = canopy_geometry_metric_updates(geometry.area())

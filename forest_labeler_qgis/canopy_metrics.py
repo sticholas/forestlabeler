@@ -77,6 +77,45 @@ def recalculate_selected_canopy_chm_metrics(layer, chm_layer, max_samples=5000):
     )
 
 
+def recalculate_canopy_chm_metrics_by_id(layer, chm_layer, feature_id, geometry=None, max_samples=5000):
+    """Recalculate CHM metrics for one feature id without requiring selection."""
+    if layer is None or chm_layer is None:
+        return CanopyMetricUpdateResult(False, 0, ("Select a canopy layer and CHM raster.",), ())
+    if feature_id is None:
+        return CanopyMetricUpdateResult(False, 0, ("Feature id is required.",), ())
+
+    feature = next(layer.getFeatures(QgsFeatureRequest().setFilterFid(feature_id)), None)
+    if feature is None:
+        return CanopyMetricUpdateResult(False, 0, (f"Could not read canopy feature {feature_id}.",), ())
+    target_geometry = QgsGeometry(geometry) if geometry is not None else QgsGeometry(feature.geometry())
+    return _recalculate_feature_chm_metrics(layer, chm_layer, feature_id, target_geometry, max_samples=max_samples)
+
+
+def _recalculate_feature_chm_metrics(layer, chm_layer, feature_id, geometry, max_samples):
+    apex_index = layer.fields().indexOf("apex_h")
+    chm_index = layer.fields().indexOf("chm_id")
+    if apex_index == -1 and chm_index == -1:
+        return CanopyMetricUpdateResult(False, 0, ("Missing CHM metric field(s): apex_h or chm_id.",), ())
+    if geometry.isEmpty():
+        return CanopyMetricUpdateResult(False, 0, (f"Feature {feature_id} has empty geometry.",), ())
+
+    chm_geometry = _geometry_in_chm_crs(geometry, layer, chm_layer)
+    apex_height = _max_raster_value_inside_geometry(chm_geometry, chm_layer, max_samples=max_samples)
+    if apex_height is None:
+        return CanopyMetricUpdateResult(False, 0, (f"Could not sample CHM inside feature {feature_id}.",), ())
+
+    updates = canopy_chm_metric_updates(apex_height, _layer_source(chm_layer))
+    warnings = []
+    if apex_index != -1 and "apex_h" in updates:
+        if not layer.changeAttributeValue(feature_id, apex_index, updates["apex_h"]):
+            return CanopyMetricUpdateResult(False, 0, (f"Could not update apex_h for feature {feature_id}.",), ())
+    if chm_index != -1 and "chm_id" in updates:
+        if not layer.changeAttributeValue(feature_id, chm_index, updates["chm_id"]):
+            warnings.append(f"Could not update chm_id for feature {feature_id}.")
+    layer.triggerRepaint()
+    return CanopyMetricUpdateResult(True, 1, (), tuple(warnings))
+
+
 def _geometry_in_chm_crs(geometry, layer, chm_layer):
     if layer.crs() == chm_layer.crs():
         return geometry
@@ -103,6 +142,11 @@ def _max_raster_value_inside_geometry(geometry, chm_layer, max_samples):
                     best = value
             y += step
         x += step
+    if best is None:
+        centroid = geometry.centroid()
+        if centroid is not None and not centroid.isEmpty():
+            point = centroid.asPoint()
+            best = sample_raster_value(chm_layer, (point.x(), point.y()))
     return best
 
 

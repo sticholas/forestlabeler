@@ -88,6 +88,7 @@ After creating a canopy, inspect the target layer attribute table.
 | Canopy Review Summary | Counts total, reviewed, unreviewed, accepted, rejected, unsure | Not run |  |
 | Backup Data | User confirms backup; timestamped SQLite backup is written under `<project_name>_forest_labeler_files/backups/` | Not run |  |
 | Recalc CHM | Selected canopy `apex_h` and `chm_id` update from selected CHM; reviewed crowns return to `unreviewed` if material fields changed | Not run |  |
+| Vertex edit with CHM selected | Edited canopy geometry updates `area_m2`, `radius_m`, `diam_m`, and attempts to refresh `apex_h`/`chm_id` from selected CHM | Not run |  |
 | Export CSV | User confirms export; `<project_name>_forest_labeler_files/forest_labeler_canopy_attempts.csv` is written next to the QGIS project | Not run |  |
 | Select Unreviewed | Selects only canopies with unreviewed status | Not run |  |
 | Select Attention | Selects rejected and unsure canopies | Not run |  |
