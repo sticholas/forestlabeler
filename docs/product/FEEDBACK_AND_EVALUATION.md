@@ -51,6 +51,8 @@ Start simple and local:
   primary labeling surface remains compact.
 - Create timestamped SQLite backups before future cleanup, sandbox testing, or
   agent-driven data manipulation.
+- Provide read-only recommendation lab output before adding automated tuning,
+  so users and agents can compare ranked evidence without mutating data.
 - Summarize feedback by mode and tightness.
 - Use `forest_labeler_core/feedback.py` for QGIS-independent feedback validation and summary rules.
 

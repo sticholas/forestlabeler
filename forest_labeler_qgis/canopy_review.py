@@ -12,7 +12,10 @@ from .canopy_attempt_log import (
     log_reviewed_canopy_attempt,
 )
 from ..forest_labeler_core.feedback_event_store import inspect_feedback_event_store
-from ..forest_labeler_core.canopy_recommendations import recommend_canopy_setting
+from ..forest_labeler_core.canopy_recommendations import (
+    canopy_recommendation_lab,
+    recommend_canopy_setting,
+)
 from ..forest_labeler_core.canopy_review import (
     CANOPY_REVIEW_FILTER_ATTENTION,
     CANOPY_REVIEW_FILTER_UNREVIEWED,
@@ -286,6 +289,30 @@ def canopy_feedback_inspection_lines():
         lines.append("")
         lines.append("Current recommendation:")
         lines.extend(format_canopy_event_recommendation(recommendation).splitlines())
+    lines.extend(_canopy_recommendation_lab_lines())
+    return tuple(lines)
+
+
+def _canopy_recommendation_lab_lines():
+    lab = canopy_recommendation_lab(feedback_event_store_path())
+    lines = [
+        "",
+        "Recommendation lab:",
+        f"- Ready for project recommendations: {'yes' if lab.ready_for_project_recommendations else 'no'}",
+        f"- Next action: {lab.next_action}",
+    ]
+    if lab.assessments:
+        lines.append("")
+        lines.append("Ranked setting evidence:")
+        for assessment in lab.assessments[:5]:
+            evidence = assessment.evidence
+            accepted_pct = round(evidence.accepted_rate * 100.0, 1)
+            eligible = "eligible" if assessment.eligible else "needs more reviews"
+            lines.append(
+                f"- {evidence.canopy_mode} / tightness {evidence.crown_tightness}: "
+                f"{accepted_pct}% accepted across {evidence.reviewed_total} reviewed "
+                f"({assessment.confidence}, {eligible})"
+            )
     return tuple(lines)
 
 

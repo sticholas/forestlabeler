@@ -8,6 +8,7 @@ from forest_labeler_core.canopy_attempt_log import CANOPY_ATTEMPT_REJECTED_REMOV
 from forest_labeler_core.canopy_recommendations import (
     UNIVERSAL_CANOPY_MODE,
     UNIVERSAL_CROWN_TIGHTNESS,
+    canopy_recommendation_lab,
     recommend_canopy_setting,
 )
 from forest_labeler_core.feedback_event_store import append_feedback_event
@@ -86,6 +87,27 @@ class CanopyRecommendationsTest(unittest.TestCase):
         self.assertAlmostEqual(recommendation.evidence.accepted_rate, 2 / 3)
         self.assertIn("2 accepted, 1 rejected or removed", recommendation.explanation)
 
+    def test_recommendation_lab_ranks_and_marks_eligible_settings(self):
+        self._append_reviewed_setting("DENSE", 17, accepted_count=4, rejected_count=0)
+        self._append_reviewed_setting("MIXED", 11, accepted_count=2, rejected_count=2)
+
+        lab = canopy_recommendation_lab(self.database_path, min_reviewed=3)
+
+        self.assertTrue(lab.ready_for_project_recommendations)
+        self.assertIn("DENSE at tightness 17", lab.next_action)
+        self.assertEqual(lab.assessments[0].evidence.canopy_mode, "DENSE")
+        self.assertTrue(lab.assessments[0].eligible)
+        self.assertEqual(lab.assessments[0].confidence, "low")
+
+    def test_recommendation_lab_explains_how_to_unlock_project_evidence(self):
+        self._append_reviewed_setting("SPARSE", 5, accepted_count=2, rejected_count=0)
+
+        lab = canopy_recommendation_lab(self.database_path, min_reviewed=3)
+
+        self.assertFalse(lab.ready_for_project_recommendations)
+        self.assertIn("Review 1 more canopy crown", lab.next_action)
+        self.assertFalse(lab.assessments[0].eligible)
+
     def _record(self, attempt_id, event, timestamp):
         return CanopyAttemptLogRecord(
             attempt_id=attempt_id,
@@ -108,6 +130,30 @@ class CanopyRecommendationsTest(unittest.TestCase):
             species="Unprocessed",
             review_status="unreviewed",
         )
+
+    def _append_reviewed_setting(self, mode, tightness, accepted_count, rejected_count):
+        index = 0
+        for status, count in (("accepted", accepted_count), ("rejected", rejected_count)):
+            for _ in range(count):
+                attempt_id = f"{mode}-{tightness}-{status}-{index}"
+                created = replace(
+                    self._record(
+                        attempt_id=attempt_id,
+                        event="created",
+                        timestamp=f"2026-06-04T00:{index:02d}:00+00:00",
+                    ),
+                    canopy_mode=mode,
+                    crown_tightness=tightness,
+                )
+                reviewed = replace(
+                    created,
+                    event=status,
+                    review_status=status,
+                    timestamp_utc=f"2026-06-04T01:{index:02d}:00+00:00",
+                )
+                append_feedback_event(self.database_path, created)
+                append_feedback_event(self.database_path, reviewed)
+                index += 1
 
 
 if __name__ == "__main__":

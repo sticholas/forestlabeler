@@ -76,7 +76,9 @@ The SQLite database is the source of truth for future QA summaries, learning,
 and team review tooling. Open **Review & QA** and click **Inspect Data** to see
 a read-only summary of attempts, lifecycle events, latest crown states, and
 accepted evidence by setting. The inspector also reports database health checks,
-including crowns that need review after edits or restoration. Recommendation
+including crowns that need review after edits or restoration. It also includes a
+read-only recommendation lab that ranks canopy settings, reports whether project
+recommendations are ready, and suggests the next review action. Recommendation
 confidence is shown here and when applying **Use Best Setting**, keeping the
 main labeling controls compact. Click **Backup Data** before cleanup,
 experiments, migrations, or agent-assisted analysis. Backups are written under:

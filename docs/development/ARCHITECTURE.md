@@ -139,6 +139,9 @@ it into the primary workflow.
 Feedback backups are stored under
 `<project_name>_forest_labeler_files/backups/` and should be created before any
 future destructive cleanup, migration, or sandbox experiment.
+Recommendation lab analysis is read-only and belongs in the review/inspection
+lane. It can rank evidence and guide review effort, but it must not write data
+or change labeling settings without explicit user action.
 
 Learning-scope policy lives in `forest_labeler_core/learning_scopes.py`. It
 defines project, user, team, and universal evidence; compatibility rules;
