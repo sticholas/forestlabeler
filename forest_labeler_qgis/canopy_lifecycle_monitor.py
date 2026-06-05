@@ -147,8 +147,15 @@ class CanopyLifecycleMonitor:
 
     def _geometry_changed(self, feature_id, geometry):
         previous = self.records_by_feature_id.get(feature_id)
-        self._update_geometry_metrics(feature_id, geometry)
-        self._update_chm_metrics(feature_id, geometry)
+        feature = self._feature(feature_id)
+        current_geometry = geometry
+        try:
+            if current_geometry is None or current_geometry.isEmpty():
+                current_geometry = feature.geometry() if feature is not None else geometry
+        except Exception:
+            current_geometry = feature.geometry() if feature is not None else geometry
+        self._update_geometry_metrics(feature_id, current_geometry)
+        self._update_chm_metrics(feature_id, current_geometry)
         self._refresh_feature(feature_id)
         current = self.records_by_feature_id.get(feature_id)
         if previous is None or current is None:

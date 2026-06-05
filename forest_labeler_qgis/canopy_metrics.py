@@ -87,7 +87,7 @@ def recalculate_canopy_chm_metrics_by_id(layer, chm_layer, feature_id, geometry=
     feature = next(layer.getFeatures(QgsFeatureRequest().setFilterFid(feature_id)), None)
     if feature is None:
         return CanopyMetricUpdateResult(False, 0, (f"Could not read canopy feature {feature_id}.",), ())
-    target_geometry = QgsGeometry(geometry) if geometry is not None else QgsGeometry(feature.geometry())
+    target_geometry = QgsGeometry(feature.geometry()) if geometry is None else QgsGeometry(geometry)
     return _recalculate_feature_chm_metrics(layer, chm_layer, feature_id, target_geometry, max_samples=max_samples)
 
 
@@ -136,7 +136,7 @@ def _max_raster_value_inside_geometry(geometry, chm_layer, max_samples):
         y = bbox.yMinimum()
         while y <= bbox.yMaximum() + 1e-9:
             point = QgsPointXY(x, y)
-            if geometry.contains(point):
+            if geometry.contains(QgsGeometry.fromPointXY(point)):
                 value = sample_raster_value(chm_layer, (x, y))
                 if value is not None and (best is None or value > best):
                     best = value
