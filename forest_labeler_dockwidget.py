@@ -72,6 +72,7 @@ from .forest_labeler_qgis.canopy_review import (
 )
 from .forest_labeler_qgis.canopy_lifecycle_monitor import CanopyLifecycleMonitor
 from .forest_labeler_qgis.canopy_attempt_log import (
+    backup_canopy_feedback_store,
     canopy_attempt_csv_export_path,
     export_canopy_attempt_csv,
 )
@@ -128,6 +129,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.summarizeCanopyReviewsButton.clicked.connect(self._summarize_canopy_reviews)
         self.useBestCanopyToolButton.clicked.connect(self._use_best_canopy_tool)
         self.inspectCanopyFeedbackButton.clicked.connect(self._inspect_canopy_feedback)
+        self.backupCanopyFeedbackButton.clicked.connect(self._backup_canopy_feedback)
         self.exportCanopyFeedbackCsvButton.clicked.connect(self._export_canopy_feedback_csv)
         self.selectUnreviewedCanopiesButton.clicked.connect(
             lambda: self._select_canopies_by_review_filter(CANOPY_REVIEW_FILTER_UNREVIEWED)
@@ -250,6 +252,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.summarizeCanopyReviewsButton.setProperty("buttonRole", "secondary")
         self.useBestCanopyToolButton.setProperty("buttonRole", "secondary")
         self.inspectCanopyFeedbackButton.setProperty("buttonRole", "secondary")
+        self.backupCanopyFeedbackButton.setProperty("buttonRole", "secondary")
         self.exportCanopyFeedbackCsvButton.setProperty("buttonRole", "secondary")
         self.selectUnreviewedCanopiesButton.setProperty("buttonRole", "secondary")
         self.selectAttentionCanopiesButton.setProperty("buttonRole", "secondary")
@@ -733,6 +736,32 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.statusTextEdit.setVisible(True)
         self._push_message("Canopy feedback store inspected.", Qgis.Info)
 
+    def _backup_canopy_feedback(self):
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Back Up Feedback Data",
+            (
+                "Create a timestamped backup of the Forest Labeler SQLite feedback database?\n\n"
+                "This is useful before cleanup, experiments, migrations, or agent-driven analysis."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.Yes,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        result = backup_canopy_feedback_store()
+        if result.ok:
+            self.statusSummaryLabel.setText("Canopy feedback backup created.")
+            self.statusTextEdit.setPlainText("\n".join(result.warnings + (result.path,)))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy feedback backup created.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Could not back up canopy feedback.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy feedback backup failed.", Qgis.Warning)
+
     def _export_canopy_feedback_csv(self):
         path = canopy_attempt_csv_export_path()
         answer = QtWidgets.QMessageBox.question(
@@ -768,6 +797,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.summarizeCanopyReviewsButton.setVisible(show_review)
         self.useBestCanopyToolButton.setVisible(show_review)
         self.inspectCanopyFeedbackButton.setVisible(show_review)
+        self.backupCanopyFeedbackButton.setVisible(show_review)
         self.exportCanopyFeedbackCsvButton.setVisible(show_review)
         self.selectUnreviewedCanopiesButton.setVisible(show_review)
         self.selectAttentionCanopiesButton.setVisible(show_review)

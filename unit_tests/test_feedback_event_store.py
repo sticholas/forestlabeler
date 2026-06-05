@@ -14,6 +14,7 @@ from forest_labeler_core.canopy_attempt_log import (
 from forest_labeler_core.feedback_event_store import (
     SCHEMA_VERSION,
     append_feedback_event,
+    backup_feedback_event_store,
     feedback_event_export_rows,
     feedback_event_id,
     inspect_feedback_event_store,
@@ -65,6 +66,26 @@ class FeedbackEventStoreTest(unittest.TestCase):
                 connection.execute("SELECT event_type FROM events").fetchone()[0],
                 CANOPY_ATTEMPT_CREATED,
             )
+
+    def test_backup_copies_readable_sqlite_store(self):
+        append_feedback_event(self.database_path, self.created_record)
+        backup_path = Path(self.temp_directory.name) / "backups" / "feedback.backup.sqlite3"
+
+        result = backup_feedback_event_store(self.database_path, backup_path)
+
+        self.assertTrue(result.ok)
+        self.assertTrue(backup_path.exists())
+        with sqlite3.connect(backup_path) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0], 1)
+
+    def test_backup_reports_missing_store(self):
+        missing_path = Path(self.temp_directory.name) / "missing.sqlite3"
+        backup_path = Path(self.temp_directory.name) / "backup.sqlite3"
+
+        result = backup_feedback_event_store(missing_path, backup_path)
+
+        self.assertFalse(result.ok)
+        self.assertIn("Feedback store has not been created yet.", result.errors)
 
     def test_duplicate_event_is_idempotent(self):
         first = append_feedback_event(self.database_path, self.created_record)

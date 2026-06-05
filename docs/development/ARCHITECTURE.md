@@ -136,6 +136,9 @@ feedback evidence.
 Recommendation confidence belongs in the review/inspection lane, not the
 default labeling lane, unless a future product decision intentionally promotes
 it into the primary workflow.
+Feedback backups are stored under
+`<project_name>_forest_labeler_files/backups/` and should be created before any
+future destructive cleanup, migration, or sandbox experiment.
 
 Learning-scope policy lives in `forest_labeler_core/learning_scopes.py`. It
 defines project, user, team, and universal evidence; compatibility rules;

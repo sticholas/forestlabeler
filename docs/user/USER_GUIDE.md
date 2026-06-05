@@ -78,8 +78,15 @@ a read-only summary of attempts, lifecycle events, latest crown states, and
 accepted evidence by setting. The inspector also reports database health checks,
 including crowns that need review after edits or restoration. Recommendation
 confidence is shown here and when applying **Use Best Setting**, keeping the
-main labeling controls compact. Click **Export CSV** only when you want a
-readable snapshot. The export is written to:
+main labeling controls compact. Click **Backup Data** before cleanup,
+experiments, migrations, or agent-assisted analysis. Backups are written under:
+
+```text
+Labelling_forest_labeler_files/backups/
+```
+
+Click **Export CSV** only when you want a readable snapshot. The export is
+written to:
 
 ```text
 Labelling_forest_labeler_files/forest_labeler_canopy_attempts.csv

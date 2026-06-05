@@ -237,6 +237,13 @@
         </widget>
        </item>
        <item>
+        <widget class="QPushButton" name="backupCanopyFeedbackButton">
+         <property name="text">
+          <string>Backup Data</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="exportCanopyFeedbackCsvButton">
          <property name="text">
           <string>Export CSV</string>

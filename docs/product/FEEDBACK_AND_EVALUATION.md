@@ -49,6 +49,8 @@ Start simple and local:
   or automated tuning workflows.
 - Keep recommendation confidence and diagnostics inside Review & QA so the
   primary labeling surface remains compact.
+- Create timestamped SQLite backups before future cleanup, sandbox testing, or
+  agent-driven data manipulation.
 - Summarize feedback by mode and tightness.
 - Use `forest_labeler_core/feedback.py` for QGIS-independent feedback validation and summary rules.
 

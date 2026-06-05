@@ -86,6 +86,7 @@ After creating a canopy, inspect the target layer attribute table.
 | `Ctrl+Z` with no selected canopy | Normal QGIS undo behavior remains available | Not run |  |
 | Review note | `review_note` stores typed note when field exists | Not run |  |
 | Canopy Review Summary | Counts total, reviewed, unreviewed, accepted, rejected, unsure | Not run |  |
+| Backup Data | User confirms backup; timestamped SQLite backup is written under `<project_name>_forest_labeler_files/backups/` | Not run |  |
 | Export CSV | User confirms export; `<project_name>_forest_labeler_files/forest_labeler_canopy_attempts.csv` is written next to the QGIS project | Not run |  |
 | Select Unreviewed | Selects only canopies with unreviewed status | Not run |  |
 | Select Attention | Selects rejected and unsure canopies | Not run |  |

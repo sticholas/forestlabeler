@@ -32,6 +32,14 @@ class FeedbackEventStoreResult:
 
 
 @dataclass(frozen=True)
+class FeedbackBackupResult:
+    ok: bool
+    source_path: str
+    backup_path: str
+    errors: tuple
+
+
+@dataclass(frozen=True)
 class FeedbackInspectionSummary:
     path: str
     exists: bool
@@ -62,6 +70,32 @@ def append_feedback_event(path, record: CanopyAttemptLogRecord):
             False,
             str(database_path),
             (f"Could not write Forest Labeler feedback event store: {exc}",),
+        )
+
+
+def backup_feedback_event_store(source_path, backup_path):
+    """Create a consistent SQLite backup for rollback-safe maintenance."""
+    source = Path(source_path)
+    target = Path(backup_path)
+    if not source.exists():
+        return FeedbackBackupResult(
+            False,
+            str(source),
+            str(target),
+            ("Feedback store has not been created yet.",),
+        )
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(str(source)) as source_connection:
+            with sqlite3.connect(str(target)) as target_connection:
+                source_connection.backup(target_connection)
+        return FeedbackBackupResult(True, str(source), str(target), ())
+    except Exception as exc:
+        return FeedbackBackupResult(
+            False,
+            str(source),
+            str(target),
+            (f"Could not back up Forest Labeler feedback store: {exc}",),
         )
 
 

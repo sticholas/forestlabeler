@@ -26,6 +26,7 @@ from ..forest_labeler_core.canopy_attempt_log import (
 )
 from ..forest_labeler_core.feedback_event_store import (
     append_feedback_event,
+    backup_feedback_event_store,
     feedback_event_export_rows,
     latest_feedback_event_type,
 )
@@ -302,6 +303,17 @@ def export_canopy_attempt_csv(path=None):
         return CanopyAttemptLogResult(True, str(export_path), (), (f"Exported {len(rows)} canopy event row(s).",))
     except Exception as exc:
         return CanopyAttemptLogResult(False, str(export_path), (f"Could not write canopy attempt CSV export: {exc}",), ())
+
+
+def backup_canopy_feedback_store():
+    """Create a timestamped project-local backup of the SQLite feedback store."""
+    source = feedback_event_store_path()
+    timestamp = _utc_now().replace(":", "").replace("-", "").replace("+", "Z")
+    backup_path = _project_feedback_directory() / "backups" / f"forest_labeler_feedback.{timestamp}.sqlite3"
+    result = backup_feedback_event_store(source, backup_path)
+    if result.ok:
+        return CanopyAttemptLogResult(True, result.backup_path, (), ("Backup created.",))
+    return CanopyAttemptLogResult(False, result.backup_path, result.errors, ())
 
 
 def canopy_attempt_csv_export_path():
