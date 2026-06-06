@@ -16,6 +16,7 @@ class TrainingPolygonFieldSpec:
 
 
 TRAINING_POLYGON_FIELD_SPECS = (
+    TrainingPolygonFieldSpec("fid", "int"),
     TrainingPolygonFieldSpec("segment_m", "double", precision=2),
     TrainingPolygonFieldSpec("side_m", "double", precision=2),
     TrainingPolygonFieldSpec("side_lengths", "string", length=160),
@@ -67,6 +68,7 @@ def build_training_shape_attribute_plan(inputs: TrainingShapeAttributeInputs, av
     """Build optional metadata for a stamped training polygon."""
     available = set(available_fields)
     desired = {
+        "fid": inputs.next_fid,
         "segment_m": round(inputs.segment_length_m, 2),
         "side_m": round(inputs.segment_length_m, 2),
         "side_lengths": inputs.side_lengths_label,
@@ -85,7 +87,7 @@ def build_training_shape_attribute_plan(inputs: TrainingShapeAttributeInputs, av
     values = {
         field_name: value
         for field_name, value in desired.items()
-        if field_name in available and value is not None
+        if field_name in available and value is not None and not (field_name == "fid" and value is None)
     }
     skipped = tuple(field_name for field_name in desired if field_name not in available)
     return AttributePlan(values=values, skipped_fields=skipped)

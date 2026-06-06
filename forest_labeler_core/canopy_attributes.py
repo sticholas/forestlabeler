@@ -20,6 +20,7 @@ class CanopyFieldSpec:
 
 
 CANOPY_FIELD_SPECS = (
+    CanopyFieldSpec("fid", "int"),
     CanopyFieldSpec("attempt_id", "string", length=80),
     CanopyFieldSpec("radius_m", "double", precision=2),
     CanopyFieldSpec("diam_m", "double", precision=2),
@@ -68,6 +69,7 @@ def build_canopy_attribute_plan(inputs: CanopyAttributeInputs, available_fields)
     """Build the canopy attributes that should be written to a target feature."""
     available = set(available_fields)
     desired = {
+        "fid": inputs.next_fid,
         "attempt_id": inputs.attempt_id,
         "radius_m": round(inputs.seed_radius_m, 2),
         "diam_m": round(inputs.seed_radius_m * 2.0, 2),
@@ -87,7 +89,7 @@ def build_canopy_attribute_plan(inputs: CanopyAttributeInputs, available_fields)
     values = {
         field_name: value
         for field_name, value in desired.items()
-        if field_name in available
+        if field_name in available and not (field_name == "fid" and value is None)
     }
     skipped = tuple(field_name for field_name in desired if field_name not in available)
     return AttributePlan(values=values, skipped_fields=skipped)
