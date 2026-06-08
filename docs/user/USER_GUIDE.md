@@ -50,26 +50,49 @@ Open **Review & QA** to mark selected canopy polygons:
 - **Unsure**: needs another look.
 - **Reject + Remove**: logs the rejected attempt, then removes it from the clean
   target layer.
+- **Use Best Setting**: applies an explainable project recommendation when
+  enough reviewed evidence exists, otherwise applies the Forest Labeler
+  universal baseline.
 
 While **Label Canopy** is active, `Ctrl+Z` is a quick reject/remove shortcut for
-the currently selected canopy. It writes the rejected attempt to the feedback
-CSV before removing the feature. If no canopy is selected, Forest Labeler leaves
-`Ctrl+Z` available for normal QGIS undo behavior.
+the currently selected canopy. It writes the rejected attempt to the durable
+feedback event store before removing the feature. If no canopy is selected,
+Forest Labeler leaves `Ctrl+Z` available for normal QGIS undo behavior.
 
-Forest Labeler writes a project-local feedback CSV named:
+Forest Labeler stores its project-local tool files in a project-specific folder
+next to the QGIS project. For a project named `Labelling.qgz`, the folder is:
 
 ```text
-forest_labeler_canopy_attempts.csv
+Labelling_forest_labeler_files/
 ```
 
-Forest Labeler also writes a durable project-local event database named:
+The durable event database is stored inside that folder:
 
 ```text
-forest_labeler_feedback.sqlite3
+Labelling_forest_labeler_files/forest_labeler_feedback.sqlite3
 ```
 
 The SQLite database is the source of truth for future QA summaries, learning,
-and team review tooling. The CSV remains a readable compatibility export.
+and team review tooling. Open **Review & QA** and click **Inspect Data** to see
+a read-only summary of attempts, lifecycle events, latest crown states, and
+accepted evidence by setting. The inspector also reports database health checks,
+including crowns that need review after edits or restoration. It also includes a
+read-only recommendation lab that ranks canopy settings, reports whether project
+recommendations are ready, and suggests the next review action. Recommendation
+confidence is shown here and when applying **Use Best Setting**, keeping the
+main labeling controls compact. Click **Backup Data** before cleanup,
+experiments, migrations, or agent-assisted analysis. Backups are written under:
+
+```text
+Labelling_forest_labeler_files/backups/
+```
+
+Click **Export CSV** only when you want a readable snapshot. The export is
+written to:
+
+```text
+Labelling_forest_labeler_files/forest_labeler_canopy_attempts.csv
+```
 
 Key identity fields:
 
@@ -79,8 +102,48 @@ Key identity fields:
 - `project_id`: stable project identity stored as a QGIS project variable.
 
 Forest Labeler keeps reject/remove actions log-first. If a rejected attempt
-cannot be written to the feedback CSV, the canopy feature is kept so the
+cannot be written to the feedback event store, the canopy feature is kept so the
 training evidence is not lost silently.
+
+Accept, Reject, and Unsure actions are stored as durable lifecycle events. This
+allows project recommendations to improve over time while preserving a clear
+record of why a setting was recommended.
+
+Forest Labeler also observes lifecycle changes made through normal QGIS tools.
+Deleting one or many tracked canopy features updates **Use Best Setting**
+evidence, and changing `review_status` directly in the attribute table is
+recorded too. Undoing a deletion restores the crown's latest review state, so
+recommendations follow the current project state while the complete history
+remains available for audit and future learning.
+
+If a reviewed crown's geometry or generation metadata is edited, Forest Labeler
+returns it to `unreviewed`. This prevents an earlier acceptance from supporting
+a crown that has materially changed. Species and review-note edits do not
+invalidate crown-shape review.
+
+When canopy geometry changes, Forest Labeler updates geometry-derived fields
+when they exist on the layer:
+
+- `area_m2`
+- `radius_m`
+- `diam_m`
+
+The updated radius is an equivalent-circle radius derived from the revised
+polygon area. Raster-derived fields such as `apex_h` stay unchanged after a
+manual geometry edit until **Recalc CHM** is run from **Review & QA**.
+
+Use **Recalc CHM** after manual edits or CHM changes to update selected canopy
+features from the selected CHM raster:
+
+- `apex_h`: maximum sampled CHM value inside the canopy polygon.
+- `chm_id`: selected CHM source path.
+
+Because these are material metric/provenance changes, previously reviewed
+crowns may return to `unreviewed` and need review again.
+
+When the selected CHM is available, Forest Labeler also attempts this CHM metric
+refresh automatically after canopy vertex edits. The manual **Recalc CHM**
+button remains useful for selected/bulk refreshes.
 
 ## Create Training Polygon
 

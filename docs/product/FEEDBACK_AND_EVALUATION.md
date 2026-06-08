@@ -39,9 +39,22 @@ Start simple and local:
 - Add review fields to output layers where available.
 - Add a small feedback panel for selected canopy features.
 - Store immutable lifecycle events in the project-local
-  `forest_labeler_feedback.sqlite3` database.
-- Keep `forest_labeler_canopy_attempts.csv` as a readable compatibility export,
-  not the source of truth.
+  `<project_name>_forest_labeler_files/forest_labeler_feedback.sqlite3`
+  database.
+- Keep `forest_labeler_canopy_attempts.csv` as an explicit user-triggered
+  readable export, not an automatic sidecar and not the source of truth.
+- Provide a read-only feedback inspector before adding any destructive cleanup
+  or sandbox testing controls.
+- Surface database health checks before allowing future cleanup, agent testing,
+  or automated tuning workflows.
+- Keep recommendation confidence and diagnostics inside Review & QA so the
+  primary labeling surface remains compact.
+- Create timestamped SQLite backups before future cleanup, sandbox testing, or
+  agent-driven data manipulation.
+- Provide read-only recommendation lab output before adding automated tuning,
+  so users and agents can compare ranked evidence without mutating data.
+- Keep CHM metric recalculation inside Review & QA so users can refresh
+  raster-derived attributes after edits without cluttering the labeling path.
 - Summarize feedback by mode and tightness.
 - Use `forest_labeler_core/feedback.py` for QGIS-independent feedback validation and summary rules.
 
@@ -100,6 +113,15 @@ Higher-trust evidence only overrides the universal baseline after minimum sample
 and compatibility checks pass. Compatibility includes workflow, algorithm
 version, ecosystem context, and CHM resolution where known.
 
+The first production recommendation path uses durable project review events:
+
+- Accept, Reject, Unsure, and Reject + Remove create lifecycle events.
+- Project evidence is summarized by canopy mode and tightness.
+- A project setting overrides the universal baseline after at least three
+  reviewed attempts support that setting.
+- The user sees the evidence scope, acceptance rate, and reviewed sample count
+  before applying the recommendation.
+
 Universal and team contributions must be explicit opt-in. Forest Labeler must
 not silently upload project data, raw geometry, or personal paths. Shared
 learning should prefer approved summaries over raw project records.
@@ -118,5 +140,24 @@ The initial SQLite schema contains:
 - `attempts`: stable creation context and parameter settings.
 - `events`: immutable lifecycle observations.
 
-Deterministic event IDs make repeated QGIS lifecycle signals idempotent. This
-prevents duplicate observations from inflating future QA metrics.
+Deterministic event IDs distinguish immutable lifecycle transitions, while
+latest-state checks suppress duplicate signals for the same transition. This
+prevents duplicate observations from inflating future QA metrics without
+discarding useful history.
+
+The selected canopy target layer is observed for normal QGIS mutations. Plugin
+buttons, Ctrl+Z quick reject, toolbar or attribute-table deletion, bulk
+deletion, direct review-status edits, and deletion undo/restoration all update
+the same attempt lifecycle. Recommendation evidence always uses the latest
+meaningful state for each stable `attempt_id`.
+
+Material geometry or provenance edits invalidate an earlier review and create
+an `edited` lifecycle event. The crown returns to `unreviewed` until a person
+reviews the changed result again. Non-material labeling metadata, such as
+species and review notes, does not invalidate crown-shape evidence.
+
+Geometry edits also refresh geometry-derived attributes before the lifecycle
+event is persisted. `area_m2`, `radius_m`, and `diam_m` are recalculated from
+the edited polygon so the layer attributes and event-store context do not drift
+apart. Raster-derived metrics, including `apex_h`, require an explicit CHM-aware
+recalculation workflow rather than an automatic geometry-only update.

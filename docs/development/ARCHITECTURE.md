@@ -121,11 +121,30 @@ Forest Labeler records enough context to support future QA and learning:
 - canopy mode, strength/tightness, radius, area, apex height, species, and review
   status
 
-The project-local `forest_labeler_feedback.sqlite3` database is the durable
-source of truth for lifecycle events. The CSV learning log remains a readable
-compatibility export. Pure event identity, schema, and persistence behavior
-live in `forest_labeler_core/feedback_event_store.py`; QGIS adapters determine
+The project-local
+`<project_name>_forest_labeler_files/forest_labeler_feedback.sqlite3` database
+is the durable source of truth for lifecycle events. The CSV learning log is an
+explicit readable export generated from SQLite when the user requests it. Pure
+event identity, schema, and persistence behavior live in
+`forest_labeler_core/feedback_event_store.py`; QGIS adapters determine
 project-local paths and translate QGIS lifecycle activity into event records.
+Read-only feedback inspection is allowed in the UI; mutation, cleanup, or
+sandbox testing should be implemented as explicit service commands rather than
+manual database edits.
+Health checks are the gate before future agents or automated tuning consume
+feedback evidence.
+Recommendation confidence belongs in the review/inspection lane, not the
+default labeling lane, unless a future product decision intentionally promotes
+it into the primary workflow.
+Feedback backups are stored under
+`<project_name>_forest_labeler_files/backups/` and should be created before any
+future destructive cleanup, migration, or sandbox experiment.
+Recommendation lab analysis is read-only and belongs in the review/inspection
+lane. It can rank evidence and guide review effort, but it must not write data
+or change labeling settings without explicit user action.
+CHM metric recalculation is a Review & QA operation. It may update selected
+feature attributes and trigger review invalidation through the canopy lifecycle
+monitor.
 
 Learning-scope policy lives in `forest_labeler_core/learning_scopes.py`. It
 defines project, user, team, and universal evidence; compatibility rules;

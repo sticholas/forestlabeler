@@ -230,6 +230,34 @@
         </widget>
        </item>
        <item>
+        <widget class="QPushButton" name="inspectCanopyFeedbackButton">
+         <property name="text">
+          <string>Inspect Data</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="backupCanopyFeedbackButton">
+         <property name="text">
+          <string>Backup Data</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="recalculateCanopyChmMetricsButton">
+         <property name="text">
+          <string>Recalc CHM</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="exportCanopyFeedbackCsvButton">
+         <property name="text">
+          <string>Export CSV</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <layout class="QHBoxLayout" name="canopySelectionLayout">
          <property name="spacing">
           <number>6</number>

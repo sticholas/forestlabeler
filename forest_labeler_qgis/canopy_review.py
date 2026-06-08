@@ -6,7 +6,16 @@ from dataclasses import dataclass
 
 from qgis.core import QgsFeatureRequest
 
-from .canopy_attempt_log import log_removed_canopy_attempt
+from .canopy_attempt_log import (
+    feedback_event_store_path,
+    log_removed_canopy_attempt,
+    log_reviewed_canopy_attempt,
+)
+from ..forest_labeler_core.feedback_event_store import inspect_feedback_event_store
+from ..forest_labeler_core.canopy_recommendations import (
+    canopy_recommendation_lab,
+    recommend_canopy_setting,
+)
 from ..forest_labeler_core.canopy_review import (
     CANOPY_REVIEW_FILTER_ATTENTION,
     CANOPY_REVIEW_FILTER_UNREVIEWED,
@@ -89,6 +98,17 @@ def mark_selected_canopies(layer, status, note=None):
         if cleaned_note and note_index != -1:
             if not layer.changeAttributeValue(feature_id, note_index, cleaned_note):
                 warnings.append(f"Could not update review note for feature {feature_id}.")
+        feature = next(
+            layer.getFeatures(QgsFeatureRequest().setFilterFid(feature_id)),
+            None,
+        )
+        if feature is None:
+            warnings.append(f"Review status changed, but feature {feature_id} could not be logged.")
+        else:
+            log_result = log_reviewed_canopy_attempt(layer, feature, status, note=cleaned_note)
+            if not log_result.ok:
+                warnings.extend(log_result.errors)
+            warnings.extend(log_result.warnings)
         updated_count += 1
 
     layer.triggerRepaint()
@@ -140,7 +160,7 @@ def reject_and_remove_canopies_by_ids(layer, feature_ids, note=None):
 
     feature_by_id = {
         feature.id(): feature
-        for feature in layer.getFeatures(QgsFeatureRequest().setFilterFids(feature_ids))
+        for feature in layer.getFeatures(QgsFeatureRequest().setFilterFids(list(feature_ids)))
     }
     removed_count = 0
     command = _LayerEditCommand(layer, "Reject and remove Forest Labeler canopy")
@@ -156,8 +176,12 @@ def reject_and_remove_canopies_by_ids(layer, feature_ids, note=None):
                 warnings.extend(log_result.errors)
                 warnings.append(f"Canopy feature {feature_id} was kept because the rejected attempt was not logged.")
                 continue
+            layer.selectByIds([feature_id])
             if not layer.deleteFeature(feature_id):
                 warnings.append(f"Could not remove canopy feature {feature_id}.")
+                continue
+            if _feature_exists(layer, feature_id):
+                warnings.append(f"QGIS reported deletion, but feature {feature_id} still appears in the edit buffer.")
                 continue
             removed_count += 1
         command.commit()
@@ -171,6 +195,10 @@ def reject_and_remove_canopies_by_ids(layer, feature_ids, note=None):
         )
 
     layer.triggerRepaint()
+    try:
+        layer.removeSelection()
+    except Exception:
+        pass
     return CanopyReviewUpdateResult(
         ok=removed_count > 0,
         updated_count=removed_count,
@@ -211,6 +239,104 @@ def best_canopy_layer_recommendation(layer, min_reviewed=3):
     if layer is None:
         raise ValueError("Select a target canopy polygon layer.")
     return best_canopy_tool_recommendation(_canopy_review_records(layer), min_reviewed=min_reviewed)
+
+
+def best_canopy_event_recommendation(min_reviewed=3):
+    """Recommend from durable project events with a universal fallback."""
+    return recommend_canopy_setting(feedback_event_store_path(), min_reviewed=min_reviewed)
+
+
+def format_canopy_event_recommendation(recommendation):
+    """Return review-lane recommendation details without cluttering main tools."""
+    lines = [
+        recommendation.explanation,
+        f"Confidence: {recommendation.confidence}",
+    ]
+    if recommendation.confidence_reasons:
+        lines.append("")
+        lines.append("Confidence reasons:")
+        lines.extend(f"- {reason}" for reason in recommendation.confidence_reasons)
+    return "\n".join(lines)
+
+
+def canopy_feedback_inspection_lines():
+    """Return compact read-only feedback store diagnostics for the UI."""
+    summary = inspect_feedback_event_store(feedback_event_store_path())
+    if not summary.exists:
+        return (
+            "Feedback store has not been created yet.",
+            f"Expected path: {summary.path}",
+        )
+
+    lines = [
+        f"Feedback store: {summary.path}",
+        f"Schema version: {summary.schema_version}",
+        f"Health: {summary.health_status}",
+        f"Size: {_format_bytes(summary.database_size_bytes)}",
+        f"Attempts: {summary.attempt_total}",
+        f"Lifecycle events: {summary.event_total}",
+    ]
+    if summary.health_checks:
+        lines.append("")
+        lines.append("Health checks:")
+        lines.extend(f"- {message}" for message in summary.health_checks)
+    if summary.event_counts:
+        lines.append("")
+        lines.append("Events:")
+        lines.extend(f"- {event}: {count}" for event, count in summary.event_counts)
+    if summary.latest_state_counts:
+        lines.append("")
+        lines.append("Latest crown states:")
+        lines.extend(f"- {state}: {count}" for state, count in summary.latest_state_counts)
+    if summary.recommended_setting_counts:
+        lines.append("")
+        lines.append("Accepted evidence by setting:")
+        lines.extend(f"- {setting}: {count}" for setting, count in summary.recommended_setting_counts)
+    recommendation = recommend_canopy_setting(feedback_event_store_path())
+    if recommendation is not None:
+        lines.append("")
+        lines.append("Current recommendation:")
+        lines.extend(format_canopy_event_recommendation(recommendation).splitlines())
+    lines.extend(_canopy_recommendation_lab_lines())
+    return tuple(lines)
+
+
+def _canopy_recommendation_lab_lines():
+    lab = canopy_recommendation_lab(feedback_event_store_path())
+    lines = [
+        "",
+        "Recommendation lab:",
+        f"- Ready for project recommendations: {'yes' if lab.ready_for_project_recommendations else 'no'}",
+        f"- Next action: {lab.next_action}",
+    ]
+    if lab.assessments:
+        lines.append("")
+        lines.append("Ranked setting evidence:")
+        for assessment in lab.assessments[:5]:
+            evidence = assessment.evidence
+            accepted_pct = round(evidence.accepted_rate * 100.0, 1)
+            eligible = "eligible" if assessment.eligible else "needs more reviews"
+            lines.append(
+                f"- {evidence.canopy_mode} / tightness {evidence.crown_tightness}: "
+                f"{accepted_pct}% accepted across {evidence.reviewed_total} reviewed "
+                f"({assessment.confidence}, {eligible})"
+            )
+    return tuple(lines)
+
+
+def _format_bytes(size_bytes):
+    try:
+        size = float(size_bytes)
+    except (TypeError, ValueError):
+        return "unknown"
+    units = ("B", "KB", "MB", "GB")
+    unit_index = 0
+    while size >= 1024 and unit_index < len(units) - 1:
+        size = size / 1024.0
+        unit_index += 1
+    if unit_index == 0:
+        return f"{int(size)} {units[unit_index]}"
+    return f"{size:.1f} {units[unit_index]}"
 
 
 def select_canopies_by_review_filter(layer, review_filter):
@@ -274,6 +400,10 @@ def _find_feature(layer, feature_id=None, attempt_id=None):
         if str(feature[attempt_index]) == str(attempt_id):
             return feature
     return None
+
+
+def _feature_exists(layer, feature_id):
+    return next(layer.getFeatures(QgsFeatureRequest().setFilterFid(feature_id)), None) is not None
 
 
 class _LayerEditCommand:

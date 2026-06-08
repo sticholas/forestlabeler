@@ -3,21 +3,37 @@
 from __future__ import annotations
 
 import csv
+import os
+import shutil
 from dataclasses import dataclass
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
 from qgis.core import QgsExpressionContextUtils, QgsProject
 
 from ..forest_labeler_core.canopy_attempt_log import (
+    CANOPY_ATTEMPT_ACCEPTED,
     CANOPY_ATTEMPT_CREATED,
+    CANOPY_ATTEMPT_EDITED,
+    CANOPY_ATTEMPT_REJECTED,
     CANOPY_ATTEMPT_REJECTED_REMOVED,
+    CANOPY_ATTEMPT_RESTORED,
+    CANOPY_ATTEMPT_UNSURE,
     CanopyAttemptLogRecord,
     canopy_attempt_log_fieldnames,
-    canopy_attempt_log_row,
     new_canopy_attempt_id,
 )
-from ..forest_labeler_core.feedback_event_store import append_feedback_event
+from ..forest_labeler_core.feedback_event_store import (
+    append_feedback_event,
+    backup_feedback_event_store,
+    feedback_event_export_rows,
+    latest_feedback_event_type,
+)
+from ..forest_labeler_core.project_storage import (
+    LEGACY_PROJECT_STORAGE_FOLDER,
+    project_storage_folder_name,
+)
 
 
 @dataclass(frozen=True)
@@ -101,8 +117,63 @@ def log_removed_canopy_attempt(layer, feature, note=None):
     )
 
 
+def log_reviewed_canopy_attempt(layer, feature, status, note=None):
+    """Log an accepted, rejected, or unsure review lifecycle event."""
+    event_by_status = {
+        "accepted": CANOPY_ATTEMPT_ACCEPTED,
+        "rejected": CANOPY_ATTEMPT_REJECTED,
+        "unsure": CANOPY_ATTEMPT_UNSURE,
+    }
+    event = event_by_status.get(str(status or "").strip().lower())
+    if event is None:
+        return CanopyAttemptLogResult(
+            False,
+            None,
+            ("Canopy review event must be accepted, rejected, or unsure.",),
+            (),
+        )
+    fields = layer.fields()
+
+    def attr(field_name):
+        index = fields.indexOf(field_name)
+        return feature[index] if index != -1 else None
+
+    attempt_id = attr("attempt_id")
+    event_store_path = feedback_event_store_path()
+    if attempt_id and latest_feedback_event_type(event_store_path, attempt_id) == event:
+        return CanopyAttemptLogResult(True, str(event_store_path), (), ())
+
+    return append_canopy_attempt_log(
+        CanopyAttemptLogRecord(
+            attempt_id=attempt_id or new_canopy_attempt_id(),
+            timestamp_utc=_utc_now(),
+            event=event,
+            project_id=_project_id(),
+            project_file=_project_file(),
+            layer_id=layer.id() if layer is not None else "",
+            layer_name=layer.name(),
+            canopy_fid=attr("fid"),
+            qgis_feature_id=feature.id(),
+            canopy_mode=attr("mode"),
+            crown_tightness=attr("tightness"),
+            seed_radius_m=attr("radius_m"),
+            area_m2=attr("area_m2"),
+            apex_height_m=attr("apex_h"),
+            refined=attr("refined"),
+            chm_id=attr("chm_id"),
+            ortho_id=attr("ortho_id"),
+            species=attr("species"),
+            review_status=event,
+            note=note,
+        )
+    )
+
+
 def log_removed_canopy_attempt_from_record(record, note=None):
     """Log a rejected/removal event from a cached created-attempt record."""
+    event_store_path = feedback_event_store_path()
+    if latest_feedback_event_type(event_store_path, record.attempt_id) == CANOPY_ATTEMPT_REJECTED_REMOVED:
+        return CanopyAttemptLogResult(True, str(event_store_path), (), ())
     return append_canopy_attempt_log(
         CanopyAttemptLogRecord(
             attempt_id=record.attempt_id,
@@ -129,8 +200,73 @@ def log_removed_canopy_attempt_from_record(record, note=None):
     )
 
 
+def log_restored_canopy_attempt_from_record(record, note=None):
+    """Record that QGIS restored a previously deleted canopy."""
+    status = str(record.review_status or "").strip().lower()
+    event = {
+        "accepted": CANOPY_ATTEMPT_ACCEPTED,
+        "rejected": CANOPY_ATTEMPT_REJECTED,
+        "unsure": CANOPY_ATTEMPT_UNSURE,
+    }.get(status, CANOPY_ATTEMPT_RESTORED)
+    return append_canopy_attempt_log(
+        replace(
+            record,
+            timestamp_utc=_utc_now(),
+            event=event,
+            note=note,
+        )
+    )
+
+
+def log_edited_canopy_attempt_from_record(record, note=None):
+    """Record a material edit that makes an earlier review stale."""
+    return append_canopy_attempt_log(
+        replace(
+            record,
+            timestamp_utc=_utc_now(),
+            event=CANOPY_ATTEMPT_EDITED,
+            review_status="unreviewed",
+            note=note,
+        )
+    )
+
+
+def canopy_attempt_record_from_feature(layer, feature, event=CANOPY_ATTEMPT_CREATED):
+    """Build a stable lifecycle snapshot from an existing Forest Labeler crown."""
+    fields = layer.fields()
+
+    def attr(field_name):
+        index = fields.indexOf(field_name)
+        return feature[index] if index != -1 else None
+
+    attempt_id = attr("attempt_id")
+    if not attempt_id:
+        return None
+    return CanopyAttemptLogRecord(
+        attempt_id=str(attempt_id),
+        timestamp_utc=_utc_now(),
+        event=event,
+        project_id=_project_id(),
+        project_file=_project_file(),
+        layer_id=layer.id(),
+        layer_name=layer.name(),
+        canopy_fid=attr("fid"),
+        qgis_feature_id=feature.id(),
+        canopy_mode=attr("mode"),
+        crown_tightness=attr("tightness"),
+        seed_radius_m=attr("radius_m"),
+        area_m2=attr("area_m2"),
+        apex_height_m=attr("apex_h"),
+        refined=attr("refined"),
+        chm_id=attr("chm_id"),
+        ortho_id=attr("ortho_id"),
+        species=attr("species"),
+        review_status=attr("review_status"),
+    )
+
+
 def append_canopy_attempt_log(record):
-    event_store_path = _feedback_event_store_path()
+    event_store_path = feedback_event_store_path()
     event_store_result = append_feedback_event(event_store_path, record)
     if not event_store_result.ok:
         return CanopyAttemptLogResult(
@@ -140,42 +276,63 @@ def append_canopy_attempt_log(record):
             (),
         )
 
-    csv_result = _append_canopy_attempt_csv(record)
-    warnings = ()
-    if not csv_result.ok:
-        warnings = csv_result.errors
     return CanopyAttemptLogResult(
         True,
         event_store_result.path,
         (),
-        warnings,
+        (),
     )
 
 
-def _append_canopy_attempt_csv(record):
-    path = _attempt_log_path()
+def export_canopy_attempt_csv(path=None):
+    """Export a readable CSV snapshot from the durable project event store."""
+    export_path = Path(path) if path is not None else canopy_attempt_csv_export_path()
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        write_header = _should_write_header(path)
-        with path.open("a", newline="", encoding="utf-8") as handle:
+        export_path.parent.mkdir(parents=True, exist_ok=True)
+        rows = feedback_event_export_rows(feedback_event_store_path())
+        with export_path.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=canopy_attempt_log_fieldnames())
-            if write_header:
-                writer.writeheader()
-            writer.writerow(canopy_attempt_log_row(record))
-        return CanopyAttemptLogResult(True, str(path), (), ())
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(
+                    {
+                        field: "" if row.get(field) is None else row.get(field)
+                        for field in canopy_attempt_log_fieldnames()
+                    }
+                )
+        return CanopyAttemptLogResult(True, str(export_path), (), (f"Exported {len(rows)} canopy event row(s).",))
     except Exception as exc:
-        return CanopyAttemptLogResult(False, str(path), (f"Could not write canopy attempt CSV export: {exc}",), ())
+        return CanopyAttemptLogResult(False, str(export_path), (f"Could not write canopy attempt CSV export: {exc}",), ())
 
 
-def _attempt_log_path():
+def backup_canopy_feedback_store():
+    """Create a timestamped project-local backup of the SQLite feedback store."""
+    source = feedback_event_store_path()
+    timestamp = _utc_now().replace(":", "").replace("-", "").replace("+", "Z")
+    backup_path = _project_feedback_directory() / "backups" / f"forest_labeler_feedback.{timestamp}.sqlite3"
+    result = backup_feedback_event_store(source, backup_path)
+    if result.ok:
+        return CanopyAttemptLogResult(True, result.backup_path, (), ("Backup created.",))
+    return CanopyAttemptLogResult(False, result.backup_path, result.errors, ())
+
+
+def canopy_attempt_csv_export_path():
     return _project_feedback_directory() / "forest_labeler_canopy_attempts.csv"
 
 
-def _feedback_event_store_path():
-    return _project_feedback_directory() / "forest_labeler_feedback.sqlite3"
+def feedback_event_store_path():
+    path = _project_feedback_directory() / "forest_labeler_feedback.sqlite3"
+    _copy_legacy_feedback_store(path)
+    return path
 
 
 def _project_feedback_directory():
+    directory = _project_home_directory() / project_storage_folder_name(_project_file_name())
+    _migrate_legacy_feedback_directory(directory)
+    return directory
+
+
+def _project_home_directory():
     project = QgsProject.instance()
     home_path = Path(project.homePath()) if project.homePath() else None
     if home_path is None or str(home_path) == ".":
@@ -184,15 +341,46 @@ def _project_feedback_directory():
     return home_path
 
 
-def _should_write_header(path):
-    if not path.exists() or path.stat().st_size == 0:
-        return True
+def _project_file_name():
     try:
-        with path.open("r", newline="", encoding="utf-8") as handle:
-            existing_header = handle.readline().strip().split(",")
-        return existing_header != canopy_attempt_log_fieldnames()
+        file_name = QgsProject.instance().fileName()
     except Exception:
-        return False
+        return ""
+    return Path(file_name).name if file_name else ""
+
+
+def _migrate_legacy_feedback_directory(new_directory):
+    legacy_directory = _project_home_directory() / LEGACY_PROJECT_STORAGE_FOLDER
+    try:
+        if not legacy_directory.exists() or legacy_directory == new_directory:
+            return
+        if not new_directory.exists():
+            os.replace(str(legacy_directory), str(new_directory))
+            return
+        migrated_all = True
+        for legacy_child in legacy_directory.iterdir():
+            target = new_directory / legacy_child.name
+            if target.exists():
+                migrated_all = False
+                continue
+            if legacy_child.is_dir():
+                shutil.copytree(str(legacy_child), str(target))
+            else:
+                shutil.copy2(str(legacy_child), str(target))
+        if migrated_all:
+            shutil.rmtree(str(legacy_directory))
+    except Exception:
+        pass
+
+
+def _copy_legacy_feedback_store(new_path):
+    legacy_path = _project_home_directory() / "forest_labeler_feedback.sqlite3"
+    try:
+        if legacy_path.exists() and not new_path.exists():
+            new_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(legacy_path), str(new_path))
+    except Exception:
+        pass
 
 
 def _project_id():
@@ -216,4 +404,4 @@ def _project_file():
 
 
 def _utc_now():
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds")

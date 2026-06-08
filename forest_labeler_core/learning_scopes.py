@@ -35,12 +35,16 @@ class RecommendationEvidence:
     accepted_rate: float
     context: LearningContext | None = None
     source_label: str | None = None
+    accepted_total: int | None = None
+    rejected_total: int | None = None
 
 
 @dataclass(frozen=True)
 class LearningRecommendation:
     evidence: RecommendationEvidence
     explanation: str
+    confidence: str
+    confidence_reasons: tuple
 
 
 @dataclass(frozen=True)
@@ -72,7 +76,33 @@ def choose_learning_recommendation(candidates, current_context, min_reviewed=3):
             -candidate.accepted_rate,
         ),
     )
-    return LearningRecommendation(best, format_recommendation_explanation(best))
+    confidence, reasons = recommendation_confidence(best)
+    return LearningRecommendation(best, format_recommendation_explanation(best), confidence, reasons)
+
+
+def recommendation_confidence(evidence):
+    """Return a conservative confidence label and explainable reasons."""
+    if evidence.scope == SCOPE_UNIVERSAL and evidence.reviewed_total == 0:
+        return (
+            "starter",
+            (
+                "Uses the bundled universal baseline.",
+                "Project-specific confidence will improve after reviewed canopies accumulate.",
+            ),
+        )
+
+    reviewed = int(evidence.reviewed_total or 0)
+    accepted_rate = float(evidence.accepted_rate or 0.0)
+    reasons = [
+        f"{reviewed} reviewed compatible canopies.",
+        f"{round(accepted_rate * 100.0, 1)}% accepted rate.",
+        f"Evidence scope: {evidence.scope}.",
+    ]
+    if reviewed >= 20 and accepted_rate >= 0.85:
+        return "high", tuple(reasons)
+    if reviewed >= 8 and accepted_rate >= 0.7:
+        return "medium", tuple(reasons)
+    return "low", tuple(reasons + ["More reviewed examples are needed before trusting this strongly."])
 
 
 def contexts_are_compatible(evidence_context, current_context, scope):
@@ -106,12 +136,24 @@ def allowed_contribution_scopes(policy: SharingPolicy):
 
 
 def format_recommendation_explanation(evidence):
-    accepted_pct = round(evidence.accepted_rate * 100.0, 1)
     source = evidence.source_label or f"{evidence.scope} evidence"
+    if evidence.scope == SCOPE_UNIVERSAL and evidence.reviewed_total == 0:
+        return (
+            f"Recommended {evidence.canopy_mode} mode at tightness {evidence.crown_tightness} "
+            f"from {source}. This starter setting will adapt after enough compatible "
+            "canopies are reviewed."
+        )
+    accepted_pct = round(evidence.accepted_rate * 100.0, 1)
+    outcome_summary = ""
+    if evidence.accepted_total is not None and evidence.rejected_total is not None:
+        outcome_summary = (
+            f" ({evidence.accepted_total} accepted, "
+            f"{evidence.rejected_total} rejected or removed)"
+        )
     return (
         f"Recommended {evidence.canopy_mode} mode at tightness {evidence.crown_tightness} "
         f"from {source}: {accepted_pct}% accepted across "
-        f"{evidence.reviewed_total} reviewed canopies."
+        f"{evidence.reviewed_total} reviewed canopies{outcome_summary}."
     )
 
 

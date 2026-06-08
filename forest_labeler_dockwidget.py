@@ -61,12 +61,21 @@ from .forest_labeler_qgis.canopy_review import (
     REVIEW_STATUS_ACCEPTED as CANOPY_REVIEW_ACCEPTED,
     REVIEW_STATUS_REJECTED as CANOPY_REVIEW_REJECTED,
     REVIEW_STATUS_UNSURE as CANOPY_REVIEW_UNSURE,
-    best_canopy_layer_recommendation,
+    best_canopy_event_recommendation,
+    canopy_feedback_inspection_lines,
     canopy_layer_quality_insight_lines,
     mark_selected_canopies,
     reject_and_remove_selected_canopies,
     select_canopies_by_review_filter,
     summarize_canopy_layer_reviews,
+    format_canopy_event_recommendation,
+)
+from .forest_labeler_qgis.canopy_lifecycle_monitor import CanopyLifecycleMonitor
+from .forest_labeler_qgis.canopy_metrics import recalculate_selected_canopy_chm_metrics
+from .forest_labeler_qgis.canopy_attempt_log import (
+    backup_canopy_feedback_store,
+    canopy_attempt_csv_export_path,
+    export_canopy_attempt_csv,
 )
 from .forest_labeler_qgis.canopy_schema import missing_canopy_schema_fields, repair_canopy_schema
 from .forest_labeler_qgis.training_polygon_schema import (
@@ -104,6 +113,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self.canopyLifecycleMonitor = CanopyLifecycleMonitor(iface=self.iface)
         self._apply_product_styling()
         self._populate_canopy_modes()
         self._populate_training_polygon_presets()
@@ -112,12 +122,18 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.trainingPolygonPresetComboBox.currentIndexChanged.connect(self._apply_training_polygon_preset)
         self.crownTightnessSlider.valueChanged.connect(self._update_crown_tightness_display)
         self.refreshLayersButton.clicked.connect(self.refresh_layers)
+        self.targetLayerComboBox.currentIndexChanged.connect(self._watch_canopy_target_layer)
+        self.chmLayerComboBox.currentIndexChanged.connect(self._watch_canopy_target_layer)
         self.validateProjectButton.clicked.connect(self.validate_project)
         self.activateLabelingButton.clicked.connect(self._request_labeling)
         self.canopyReviewToolsCheckBox.toggled.connect(self._update_canopy_review_controls)
         self.repairCanopySchemaButton.clicked.connect(self._repair_canopy_schema)
         self.summarizeCanopyReviewsButton.clicked.connect(self._summarize_canopy_reviews)
         self.useBestCanopyToolButton.clicked.connect(self._use_best_canopy_tool)
+        self.inspectCanopyFeedbackButton.clicked.connect(self._inspect_canopy_feedback)
+        self.backupCanopyFeedbackButton.clicked.connect(self._backup_canopy_feedback)
+        self.recalculateCanopyChmMetricsButton.clicked.connect(self._recalculate_canopy_chm_metrics)
+        self.exportCanopyFeedbackCsvButton.clicked.connect(self._export_canopy_feedback_csv)
         self.selectUnreviewedCanopiesButton.clicked.connect(
             lambda: self._select_canopies_by_review_filter(CANOPY_REVIEW_FILTER_UNREVIEWED)
         )
@@ -192,6 +208,14 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.statusSummaryLabel.setText("Project not validated.")
         self.statusTextEdit.clear()
         self.statusTextEdit.setVisible(False)
+        self._watch_canopy_target_layer()
+
+    def _watch_canopy_target_layer(self, *_args):
+        """Observe every deletion path on the selected canopy target layer."""
+        self.canopyLifecycleMonitor.watch(
+            self._current_layer(self.targetLayerComboBox),
+            chm_layer=self._current_layer(self.chmLayerComboBox),
+        )
 
     def validate_project(self):
         """Validate selected layers and report whether labeling can start."""
@@ -233,6 +257,10 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.repairCanopySchemaButton.setProperty("buttonRole", "secondary")
         self.summarizeCanopyReviewsButton.setProperty("buttonRole", "secondary")
         self.useBestCanopyToolButton.setProperty("buttonRole", "secondary")
+        self.inspectCanopyFeedbackButton.setProperty("buttonRole", "secondary")
+        self.backupCanopyFeedbackButton.setProperty("buttonRole", "secondary")
+        self.recalculateCanopyChmMetricsButton.setProperty("buttonRole", "secondary")
+        self.exportCanopyFeedbackCsvButton.setProperty("buttonRole", "secondary")
         self.selectUnreviewedCanopiesButton.setProperty("buttonRole", "secondary")
         self.selectAttentionCanopiesButton.setProperty("buttonRole", "secondary")
         self.markCanopyAcceptedButton.setProperty("buttonRole", "secondary")
@@ -585,6 +613,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 return
 
         result = repair_canopy_schema(layer)
+        self._watch_canopy_target_layer()
         if result.ok and result.added_fields:
             self.statusSummaryLabel.setText(f"Added {len(result.added_fields)} canopy field(s).")
             self.statusTextEdit.setPlainText(", ".join(result.added_fields))
@@ -673,9 +702,7 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def _use_best_canopy_tool(self):
         try:
-            recommendation = best_canopy_layer_recommendation(
-                self._current_layer(self.targetLayerComboBox)
-            )
+            recommendation = best_canopy_event_recommendation()
         except ValueError as exc:
             self.statusSummaryLabel.setText("Could not find a reviewed canopy tool setting.")
             self.statusTextEdit.setPlainText(str(exc))
@@ -683,23 +710,13 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self._push_message("Canopy recommendation failed.", Qgis.Warning)
             return
 
-        if recommendation is None:
-            self.statusSummaryLabel.setText("No reviewed canopy tool setting is ready yet.")
-            self.statusTextEdit.setPlainText(
-                "Review at least 3 canopies with the same mode and tightness before using a best tool setting."
-            )
-            self.statusTextEdit.setVisible(True)
-            self._push_message("Canopy recommendation needs more reviewed examples.", Qgis.Info)
-            return
-
-        accepted_pct = round(recommendation.accepted_rate * 100.0, 1)
+        evidence = recommendation.evidence
         answer = QtWidgets.QMessageBox.question(
             self,
             "Use Best Canopy Tool",
             (
-                "Apply this reviewed canopy setting to the Label Canopy controls?\n\n"
-                f"{recommendation.canopy_mode}, tightness {recommendation.crown_tightness}\n"
-                f"{accepted_pct}% accepted across {recommendation.reviewed_total} reviewed canopies."
+                "Apply this explainable recommendation to the Label Canopy controls?\n\n"
+                f"{format_canopy_event_recommendation(recommendation)}"
             ),
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
             QtWidgets.QMessageBox.Yes,
@@ -707,25 +724,107 @@ class forestlabelerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if answer != QtWidgets.QMessageBox.Yes:
             return
 
-        mode_index = self.canopyModeComboBox.findText(recommendation.canopy_mode)
+        mode_index = self.canopyModeComboBox.findText(evidence.canopy_mode)
         if mode_index != -1:
             self.canopyModeComboBox.setCurrentIndex(mode_index)
-        if recommendation.crown_tightness is not None:
+        if evidence.crown_tightness is not None:
             self.crownTightnessSlider.setValue(
-                crown_tightness_to_percent(recommendation.crown_tightness)
+                crown_tightness_to_percent(evidence.crown_tightness)
             )
-        self.statusSummaryLabel.setText("Best reviewed canopy tool setting applied.")
-        self.statusTextEdit.setPlainText(
-            f"{recommendation.canopy_mode}, tightness {recommendation.crown_tightness}"
-        )
+        self.statusSummaryLabel.setText("Explainable canopy recommendation applied.")
+        self.statusTextEdit.setPlainText(format_canopy_event_recommendation(recommendation))
         self.statusTextEdit.setVisible(True)
-        self._push_message("Best reviewed canopy tool setting applied.", Qgis.Success)
+        self._push_message("Canopy recommendation applied.", Qgis.Success)
+
+    def _inspect_canopy_feedback(self):
+        lines = canopy_feedback_inspection_lines()
+        self.statusSummaryLabel.setText("Canopy feedback store inspected.")
+        self.statusTextEdit.setPlainText("\n".join(lines))
+        self.statusTextEdit.setVisible(True)
+        self._push_message("Canopy feedback store inspected.", Qgis.Info)
+
+    def _backup_canopy_feedback(self):
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Back Up Feedback Data",
+            (
+                "Create a timestamped backup of the Forest Labeler SQLite feedback database?\n\n"
+                "This is useful before cleanup, experiments, migrations, or agent-driven analysis."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.Yes,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        result = backup_canopy_feedback_store()
+        if result.ok:
+            self.statusSummaryLabel.setText("Canopy feedback backup created.")
+            self.statusTextEdit.setPlainText("\n".join(result.warnings + (result.path,)))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy feedback backup created.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Could not back up canopy feedback.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy feedback backup failed.", Qgis.Warning)
+
+    def _recalculate_canopy_chm_metrics(self):
+        result = recalculate_selected_canopy_chm_metrics(
+            self._current_layer(self.targetLayerComboBox),
+            self._current_layer(self.chmLayerComboBox),
+        )
+        if result.ok:
+            self.statusSummaryLabel.setText(
+                f"Recalculated CHM metrics for {result.updated_count} canopy/canopies."
+            )
+            self.statusTextEdit.setPlainText("\n".join(result.warnings))
+            self.statusTextEdit.setVisible(bool(result.warnings))
+            self._push_message("Canopy CHM metrics recalculated.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Could not recalculate canopy CHM metrics.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors + result.warnings))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy CHM metric recalculation failed.", Qgis.Warning)
+
+    def _export_canopy_feedback_csv(self):
+        path = canopy_attempt_csv_export_path()
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Export Canopy Feedback CSV",
+            (
+                "Export a readable CSV snapshot of Forest Labeler canopy lifecycle events?\n\n"
+                "The CSV will be written next to this QGIS project inside:\n\n"
+                f"{path.parent}\n\n"
+                "The SQLite database remains the source of truth for recommendations."
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.Yes,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        result = export_canopy_attempt_csv(path)
+        if result.ok:
+            self.statusSummaryLabel.setText("Canopy feedback CSV exported.")
+            self.statusTextEdit.setPlainText("\n".join(result.warnings + (result.path,)))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy feedback CSV exported.", Qgis.Success)
+        else:
+            self.statusSummaryLabel.setText("Could not export canopy feedback CSV.")
+            self.statusTextEdit.setPlainText("\n".join(result.errors))
+            self.statusTextEdit.setVisible(True)
+            self._push_message("Canopy feedback CSV export failed.", Qgis.Warning)
 
     def _update_canopy_review_controls(self):
         show_review = self.canopyReviewToolsCheckBox.isChecked()
         self.repairCanopySchemaButton.setVisible(False)
         self.summarizeCanopyReviewsButton.setVisible(show_review)
         self.useBestCanopyToolButton.setVisible(show_review)
+        self.inspectCanopyFeedbackButton.setVisible(show_review)
+        self.backupCanopyFeedbackButton.setVisible(show_review)
+        self.recalculateCanopyChmMetricsButton.setVisible(show_review)
+        self.exportCanopyFeedbackCsvButton.setVisible(show_review)
         self.selectUnreviewedCanopiesButton.setVisible(show_review)
         self.selectAttentionCanopiesButton.setVisible(show_review)
         self.canopyReviewNoteLineEdit.setVisible(show_review)
